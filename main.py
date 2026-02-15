@@ -57,6 +57,20 @@ class Sistem:
             self.sound = music
             self.sound.play(-1)
 
+    def base_seting(self):
+        return {
+            "cards_now": 0,
+            "choss_what": False,
+            "scrool_opisanie": 0,
+            "scrool_chat": 0,
+            "dialog": 0,
+            "item": False,
+            "round_itom": 0,
+            "round_artifact": 0,
+            "mous_on": False,
+            "figur on mous": False
+        }
+
 class Soul_class:
     def __init__(self, move_map, png, name):
         self.move_map = move_map
@@ -98,6 +112,7 @@ class Soul_class:
 
             return for_time
 
+
 setting = {
     "cards_now": 0,
     "choss_what": False,
@@ -109,7 +124,6 @@ setting = {
     "round_artifact": 0,
     "mous_on": False,
     "figur on mous": False
-
 }
 
 
@@ -419,6 +433,8 @@ class Objet:
                             truE(res[1])
                                    )
 
+
+
             if return_ing.ai:
                 ai_set = {}
                 if "!@#$" in return_ing.ai:
@@ -430,6 +446,8 @@ class Objet:
                 ai_set["type"] = return_ing.ai
 
                 return_ing.ai = ai_set
+            else:
+                return_ing.ai = {}
 
             if True:
                 if "sunduk_" in return_ing.type or "seller_" in return_ing.type:
@@ -451,61 +469,60 @@ class Objet:
                   "right": [1, 0]}
         player_x_y = playr_now.x%were.RAZMER, playr_now.y%were.RAZMER
 
-        if not self.ai["use"]:
-            self.ai["use"] = True
-            if self.ai["type"] == "random":
-                new_x_y = random.randint(0, 2) - 1, random.randint(0, 2) - 1
-                i = 10
-                while i:
-                    if not (new_x_y[0] == 0 and new_x_y[1] == 0):
-                        if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
-                            if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
-                                were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
-                                were.local_World[x][y] = False
-                                i = 1
-                    new_x_y = random.randint(0, 1) * 2 - 1, random.randint(0, 1) * 2 - 1
-                    i -= 1
-
-            elif "move_" in self.ai["type"]:
-                vectore = go_to_[self.ai["type"][5:]]
-                if were.exsit_to_space(x + vectore[0], y + vectore[1]):
-                    were.local_World[x + vectore[0]][y + vectore[1]] = were.local_World[x][y]
-                    were.local_World[x][y] = False
-                else:
-                    were.local_World[x][y] = False
-
-            elif "goplayer" in self.ai["type"]:
-                new_x_y = [0, 0]
-                if player_x_y[0] > x:
-                    new_x_y[0] = 1
-                elif player_x_y[0] < x:
-                    new_x_y[0] = -1
-                elif player_x_y[1] > y:
-                    new_x_y[1] = 1
-                elif player_x_y[1] < y:
-                    new_x_y[1] = -1
-                if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
-                    if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
-                        were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
-                        if new_x_y[0] or new_x_y[1]:
+        self.ai["use"] = True
+        if self.ai["type"] == "random":
+            new_x_y = random.randint(0, 2) - 1, random.randint(0, 2) - 1
+            i = 10
+            while i:
+                if not (new_x_y[0] == 0 and new_x_y[1] == 0):
+                    if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
+                        if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
+                            were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
                             were.local_World[x][y] = False
+                            i = 1
+                new_x_y = random.randint(0, 1) * 2 - 1, random.randint(0, 1) * 2 - 1
+                i -= 1
 
-            elif "bishop" in self.ai["type"]:
-                ex, ey = x, y
-                px, py = player_x_y
+        elif "move_" in self.ai["type"]:
+            vectore = go_to_[self.ai["type"][5:]]
+            if were.exsit_to_space(x + vectore[0], y + vectore[1]):
+                were.local_World[x + vectore[0]][y + vectore[1]] = were.local_World[x][y]
+                were.local_World[x][y] = False
+            else:
+                were.local_World[x][y] = False
 
-                if (ex, ey) == (px, py):
-                    return (ex, ey)
+        elif "goplayer" in self.ai["type"]:
+            new_x_y = [0, 0]
+            if player_x_y[0] > x:
+                new_x_y[0] = 1
+            elif player_x_y[0] < x:
+                new_x_y[0] = -1
+            elif player_x_y[1] > y:
+                new_x_y[1] = 1
+            elif player_x_y[1] < y:
+                new_x_y[1] = -1
+            if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
+                if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
+                    were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
+                    if new_x_y[0] or new_x_y[1]:
+                        were.local_World[x][y] = False
 
-                dx = 1 if px > ex else -1 if px < ex else 0
-                dy = 1 if py > ey else -1 if py < ey else 0
+        elif "bishop" in self.ai["type"]:
+            ex, ey = x, y
+            px, py = player_x_y
 
-                step_x = dx if dx != 0 else 1
-                step_y = dy if dy != 0 else 1
+            if (ex, ey) == (px, py):
+                return (ex, ey)
 
-                if were.exsit_to_space(step_x + ex, step_y + ey):
-                    were.local_World[ex + step_x][ey + step_y] = self
-                    were.local_World[x][y] = False
+            dx = 1 if px > ex else -1 if px < ex else 0
+            dy = 1 if py > ey else -1 if py < ey else 0
+
+            step_x = dx if dx != 0 else 1
+            step_y = dy if dy != 0 else 1
+
+            if were.exsit_to_space(step_x + ex, step_y + ey):
+                were.local_World[ex + step_x][ey + step_y] = self
+                were.local_World[x][y] = False
 
 class Cards:
     def __init__(self, foto, name, type, leval, more_inf, id):
@@ -1013,22 +1030,26 @@ class World:
                     sistem_seting.boss[0] -= 1
 
     def canculate_tick(self):
+
+        pass
+
         self.supruse()
         for x in range(self.RAZMER):
             for y in range(self.RAZMER):
                 if self.local_World[x][y]:
-                    if self.local_World[x][y].ai:
-
-                        self.local_World[x][y].ai_chet(self, x, y)
+                    if self.local_World[x][y].ai != {}:
+                        if not self.local_World[x][y].ai["use"]:
+                            self.local_World[x][y].ai_chet(self, x, y)
 
 
         for x in range(self.RAZMER):
             for y in range(self.RAZMER):
                 if self.local_World[x][y]:
                     if self.local_World[x][y].ai:
-                        self.local_World[x][y].ai["use"]= False
+                        self.local_World[x][y].ai["use"] = False
 
         obj_triger = zith.local_World[playr_now.x%zith.RAZMER][playr_now.y%zith.RAZMER]
+
         if obj_triger:
             if obj_triger.more_inf["kill"]:
                 playr_now.uron(obj_triger.more_inf["kill"])
@@ -1120,6 +1141,7 @@ class World:
                         if self.we_now.fon:
                             all_gif["profil"] = self.we_now.fon
                         self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
+                        self.room_generate(playr_now.x, playr_now.y)
 
 
                     elif "transform_" in run.type:
@@ -1248,7 +1270,7 @@ class line:
 
 class Trangul:
     def round(x, y, r, d):
-        return math.sin(r)*d - x, math.cos(r)*d - y
+        return math.sin(r)*d + x, math.cos(r)*d + y
 
     def angel(x1, y1, x2, y2):
         return math.atan2(y1-y2, x1-x2)
@@ -1309,6 +1331,8 @@ def move(world, ikey, for_who):
 
     if job:
 
+        pass
+
         zith.triger()
         zith.canculate_tick()
 
@@ -1349,21 +1373,21 @@ def renre_reset():
     if len_:
         pygame.draw.circle(sc_main, (255, 0, 0),
                            Trangul.round(200, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103),
-                           25
-                           )
-        Trangul.round(225 - 25, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103)
+                           25)
+#        Trangul.round(225 - 25, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103)
+
         for i in range(len_):
             sc_main.blit(pygame.transform.scale(playr_now.cards[i].foto, (50, 75)),
-                         Trangul.round(225 - 25, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103)
-                         )
+                         Trangul.round(225 - 25, 255 - 37, math.pi / len_ * i + rad * 45, 103))
+
     if len2_:
         pygame.draw.circle(sc_main, (255, 0, 0),
                            Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * setting["round_artifact"] + rad * 300, 103),
                            25)
+
         for i in range(len2_):
             sc_main.blit(pygame.transform.scale(playr_now.artefact[i].foto, (50, 50)),
-                         Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * setting["round_artifact"] + rad * 300, 103)
-                         )
+                         Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * i + rad * 300, 103))
 
 def start_locashon():
 
@@ -1404,7 +1428,7 @@ igra_gui = IMenu([
     [269, 293, 383, 512], #кнопка дилога 3
     [960, 229, 1199, 708], #артевакты
     [1146, 1, 1198, 53], #сохронение
-
+    [1083, 4, 1137, 56] #настройки
                  ])
 
 kill_gui = IMenu([
@@ -1695,15 +1719,15 @@ while RUN:
                             menu = 2
 
                             sistem_seting.start_music(sounds["entar"])
-
                             save_itom = ("cards", playr_now.cards[setting["round_itom"]])
+                            setting = sistem_seting.base_seting()
 
                     elif BUTTON == 2:
                         menu = 2
 
                         sistem_seting.start_music(sounds["entar"])
-
                         save_itom = ("cards", playr_now.artefact[setting["round_artifact"]])
+                        setting = sistem_seting.base_seting()
 
                 if i.button == 4: #колёсеко верх
                     if BUTTON == 3:
