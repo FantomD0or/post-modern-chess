@@ -49,13 +49,20 @@ class Sistem:
         self.sound = sound
 
     def start_music(self, music):
-        if self.sound:
-            self.sound.stop()
-            self.sound = music
-            self.sound.play(-1)
-        else:
-            self.sound = music
-            self.sound.play(-1)
+        try:
+            if self.sound:
+                self.sound.stop()
+                self.sound = music
+                self.sound.play(-1)
+            else:
+                self.sound = music
+                self.sound.play(-1)
+        except:
+            if self.sound:
+                self.sound.stop()
+            self.sound = False
+
+
 
     def base_seting(self):
         return {
@@ -72,11 +79,11 @@ class Sistem:
         }
 
 class Soul_class:
-    def __init__(self, move_map, png, name):
+    def __init__(self, move_map, png, name, gid):
         self.move_map = move_map
         self.png = png
         self.name = name
-
+        self.gid = gid
         self.razbienie(move_map)
 
     def razbienie(self, _move_map):
@@ -90,7 +97,6 @@ class Soul_class:
         map = _move_map.split(",")
         for i in map:
             for_time = []
-
             if i[1] in tipe:
                 for_time.append(tipe[i[1]])
             for_time.append(smart_int(i[2:4]))
@@ -108,7 +114,7 @@ class Soul_class:
 
 
             for res in cursor:
-                for_time = Soul_class(res[1], True_Save.foto_load(res[3]), res[2])
+                for_time = Soul_class(res[1], True_Save.foto_load(res[3]), res[2], True_Save.foto_load(res[4]))
 
             return for_time
 
@@ -130,13 +136,15 @@ setting = {
 
 class Scale:
     def __init__(self, _real_screen, _ekran):
-        self.scale_up = _ekran[0] / _real_screen[0]
-        self.scale_right = _ekran[1] / _real_screen[1]
+        self.scale_up = _ekran[0]
+        self.scale_right = _ekran[1]
     
     def mous_get(self):
         up, right = pygame.mouse.get_pos()
-        up = up*self.scale_up
-        right = right * self.scale_right
+        up = up * (ekran[0] / sc_real.get_width())
+        right = right * (ekran[1] / sc_real.get_height())
+        up = math.floor(up)
+        right = math.floor(right)
         return up, right
 
 
@@ -148,7 +156,7 @@ screen_height = root.winfo_screenheight()
 
 real_screen = [screen_width * (600/1200) * 1.3, screen_height * (1200/1920) * 1.3]
 scale = Scale(real_screen, ekran)
-sc_real = pygame.display.set_mode(real_screen)
+sc_real = pygame.display.set_mode(real_screen, pygame.RESIZABLE)
 
 scale_texst = math.floor(36 * (ekran[0]/screen_width))
 
@@ -329,7 +337,7 @@ class Save:
             return res[0]
 
     def start_seting(self):
-        sus = Soul_class.load_act_soul_data_base(1)
+        sus = Soul_class.load_act_soul_data_base(3)
         base = Player(3, -2, 3, [], [], [], sus)
         return base
 
@@ -769,15 +777,17 @@ class World:
                     else:
                         holst.blit(mesto[x][y].foto, (x * 50, y * 50))
 
+        self.jod(holst)
+        sc_main.blit(pygame.transform.scale(holst, (400, 400)), (400, 200))
 
         self.other_staf()
         self.choss_render()
         self.texst_inf()
         self.texst_dialog()
         self.hp_render()
-        self.jod(holst)
 
-        sc_main.blit(pygame.transform.scale(holst, (400, 400)), (400, 200))
+
+
 
 
         if setting["figur on mous"]:
@@ -821,6 +831,9 @@ class World:
         sc_main.blit(nots.render(str(playr_now.y * -1) + " - " + one_to_ABC(int(math.fabs(playr_now.x + 1))), True,
                                  (255, 255, 255)), (0, 0))
         sc_main.blit(pygame.transform.scale(playr_now.soul.png, (182, 217)), (190, 40))
+
+        sc_main.blit(playr_now.soul.gid, (336,663))
+
         if self.up_leval[self.RAZMER+1] - playr_now.y < 0:
             sc_main.blit(nots.render(str((self.up_leval[self.RAZMER+1] - playr_now.y) * -1),
                                      True, (255, 0, 0)), (47, 650))
@@ -1141,8 +1154,6 @@ class World:
                         if self.we_now.fon:
                             all_gif["profil"] = self.we_now.fon
                         self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
-                        self.room_generate(playr_now.x, playr_now.y)
-
 
                     elif "transform_" in run.type:
                         what_take = run.type.split("_")
@@ -1329,6 +1340,9 @@ def move(world, ikey, for_who):
     elif ikey == pygame.K_TAB:
         job = True
 
+    elif ikey == pygame.K_i:
+        comand(input("команду пж: "))
+
     if job:
 
         pass
@@ -1355,7 +1369,6 @@ def other_mov(ichela):
         now = mapi[i]
         if [playr_now.x%zith.RAZMER - now[1], playr_now.y%zith.RAZMER - now[2]] == ichela:
             move(zith, i, playr_now.soul)
-
 
 def renre_reset():
     # rad * 225 начало линии
@@ -1399,6 +1412,16 @@ def start_locashon():
     playr_now.cards.append(Cards.load_card_from_data_base(3))
     playr_now.artefact.append(Cards.load_card_from_data_base(4))
 
+def comand(com):
+    _comand = com.split(" ")
+    if _comand[0] == "y":
+        playr_now.y = int(_comand[1])
+    elif _comand[0] == "x":
+        playr_now.x = int(_comand[1])
+    elif _comand[0] == "smena":
+        zith.smena(playr_now.y)
+    elif _comand[0] == "loacsion":
+        zith.we_now = Place.load_place_from_data_base(int(_comand[1]))
 
 
 zith = World(random.randint(0, 100000000), Place("", [], "", "", "free", "", ""))
@@ -1490,7 +1513,7 @@ while RUN:
 
     sc_main.blit(nots.render("версия 0.8", True, (255, 255, 255)), (500 * scale.scale_right, 0))
 
-    scaled_canvas = pygame.transform.scale(sc_main, real_screen)
+    scaled_canvas = pygame.transform.scale(sc_main, (sc_real.get_width(), sc_real.get_height()))
 
     sc_real.blit(scaled_canvas, (0, 0))
 
