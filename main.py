@@ -75,8 +75,14 @@ class Sistem:
             "round_itom": 0,
             "round_artifact": 0,
             "mous_on": False,
-            "figur on mous": False
+            "figur on mous": False,
+            "soul vibor": 0
         }
+
+option_settings = {
+    "all_png": "base texsture pack",
+    "languje": "ru"
+}
 
 class Soul_class:
     def __init__(self, move_map, png, name, gid):
@@ -118,6 +124,21 @@ class Soul_class:
 
             return for_time
 
+    def get_all_soul(self = None):
+        datka = sqlite3.connect('data base/save_file.db')
+
+        cursor = datka.cursor()
+        cursor.execute("""SELECT haw FROM metaprogress WHERE id = 1""")
+        for res in cursor:
+            for_time = res[0]
+
+        for_time = for_time.split(",")
+        returning = []
+
+        for i in for_time:
+            returning.append(Soul_class.load_act_soul_data_base(int(i)))
+
+        return returning
 
 setting = {
     "cards_now": 0,
@@ -129,8 +150,10 @@ setting = {
     "round_itom": 0,
     "round_artifact": 0,
     "mous_on": False,
-    "figur on mous": False
+    "figur on mous": False,
+    "soul vibor": 0
 }
+
 
 
 
@@ -169,14 +192,6 @@ pygame.display.set_icon(pygame.image.load("png_like/logo-Photoroom.png"))
 
 
 
-option_settings = {
-    "all_png": "base texsture pack",
-    "languje": "ru"
-}
-
-all_gif = {
-
-}
 
 
 class Save:
@@ -337,7 +352,7 @@ class Save:
             return res[0]
 
     def start_seting(self):
-        sus = Soul_class.load_act_soul_data_base(3)
+        sus = Soul_class.load_act_soul_data_base(1)
         base = Player(3, -2, 3, [], [], [], sus)
         return base
 
@@ -364,7 +379,13 @@ playr_now = True_Save.start_seting()
 
 sistem_seting = Sistem([], 0, [0, 0], False)
 
+all_gif = {
 
+}
+
+meta_progress = {
+    "open soul": Soul_class.get_all_soul()
+}
 
 tesxture_blok = {
     "fon": True_Save.foto_load("fon.png"),
@@ -372,7 +393,8 @@ tesxture_blok = {
     "hp": [True_Save.foto_load("hp1.png"),
            True_Save.foto_load("hp2.png")],
     "reset": True_Save.foto_load("vibor.png"),
-    "seting": True_Save.foto_load("seting.png")
+    "seting": True_Save.foto_load("seting.png"),
+    "soul_sect": True_Save.foto_load("soul_select.png")
 }
 
 True_Save.reload()
@@ -726,6 +748,8 @@ class IMenu:
         for i, element in enumerate(self.gui):
             if len(element) == 4:
                 x1, y1, x2, y2 = element
+                if self.test:
+                    pygame.draw.rect(sc_main, (255, 255, 255), (x1, y1, x2 - x1, y2 - y1))
                 if x1 <= m_x <= x2 and y1 <= m_y <= y2:
                     return i + 1
 
@@ -1043,8 +1067,6 @@ class World:
                     sistem_seting.boss[0] -= 1
 
     def canculate_tick(self):
-
-        pass
 
         self.supruse()
         for x in range(self.RAZMER):
@@ -1403,7 +1425,7 @@ def renre_reset():
                          Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * i + rad * 300, 103))
 
 def start_locashon():
-
+    zith.we_now = Place.load_place_from_data_base(1)
     zith.local_World = [[False for _ in range(zith.RAZMER)] for _ in range(zith.RAZMER)]
     zith.local_World[7][7] = Objet.load_obj_from_data_base(40)
     zith.local_World[6][7] = Objet.load_obj_from_data_base(41)
@@ -1455,10 +1477,9 @@ igra_gui = IMenu([
                  ])
 
 kill_gui = IMenu([
-      [497, 773, 186],
-      [737, 773, 186],
-      [0, 0, 300, 900],
-      [782, 368, 50]
+      [497, 773, 186], # назад в меню
+      [737, 773, 186], # выбрать
+      [782, 485, 939, 569] # следущий
       ])
 
 reset_gui = IMenu([
@@ -1475,7 +1496,13 @@ seting_gui = IMenu([
     [75, 590, 237, 636]   #музыка
 ])
 
-
+soul_select_gui = IMenu([
+    [481, 757, 86],
+    [766, 763, 84],
+    [760, 485, 966, 566],
+    [520, 77, 1058, 308],
+    [90, 128, 307, 345]
+])
 
 sounds = {
     "locashon 1": pygame.mixer.Sound("music/SFX_852.mp3"),
@@ -1689,7 +1716,7 @@ while RUN:
                         zith.smena(playr_now.y)
                         start_locashon()
 
-                        menu = 1
+                        menu = 6
 
                         if save_itom:
                             if save_itom[1].type == "clear":
@@ -1715,7 +1742,7 @@ while RUN:
                         playr_now = True_Save.up_save()
                         zith.we_now.name = False
                         zith.smena(playr_now.y)
-                        menu = 1
+                        menu = 2
 
 
 
@@ -1815,11 +1842,36 @@ while RUN:
                         option_settings["languje"] = lang[BUTTON]
                         True_Save.geting_staf("languge", lang[BUTTON])
 
-
-
             if i.type == pygame.QUIT:
                 RUN = False
 
+    elif menu == 6:
+        sc_main.blit(tesxture_blok["soul_sect"], (0, 0))
+
+        sc_main.blit(pygame.transform.scale(meta_progress["open soul"][setting["soul vibor"]].png, (218, 218)), (90, 128))
+
+        for i in pygame.event.get():
+            if i.type == pygame.KEYDOWN:
+                pass
+            if i.type == pygame.MOUSEBUTTONDOWN:
+                BUTTON = soul_select_gui.button_mous(scale.mous_get())
+
+                if i.button == 1:
+                    if BUTTON == 1:
+                        menu = 2
+                    if BUTTON == 2:
+                        playr_now.soul = meta_progress["open soul"][setting["soul vibor"]]
+                        menu = 1
+                    if BUTTON == 3:
+                        if len(meta_progress["open soul"])-1 == setting["soul vibor"]:
+                            setting["soul vibor"] = 0
+                        else:
+                            setting["soul vibor"] += 1
+                    if BUTTON == 4:
+                        pass
+
+            if i.type == pygame.QUIT:
+                RUN = False
 
 
 
