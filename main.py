@@ -140,6 +140,20 @@ class Soul_class:
 
         return returning
 
+    def unlock_soul(self=None):
+        with sqlite3.connect('data base/save_file.db') as datka:
+            cursor = datka.cursor()
+            cursor.execute("SELECT haw FROM metaprogress WHERE id = 1")
+            res = cursor.fetchone()
+
+            if res:
+                for_time = res[0]
+                new_index = len(for_time.split(",")) + 1
+                updated_haw = f"{for_time},{new_index}"
+                cursor.execute("UPDATE metaprogress SET haw = ? WHERE id = 1", (updated_haw,))
+                datka.commit()
+        meta_progress["open soul"] = Soul_class.get_all_soul()
+
 setting = {
     "cards_now": 0,
     "choss_what": False,
@@ -416,6 +430,7 @@ class Gif:
         list = os.listdir("png_like/base texsture pack/gif/" + self.id)
         returning_list = []
         for i in list:
+            if ".png" in i:
                 returning_list.append(True_Save.foto_load("gif/" + self.id + "/" + i))
         self.list = returning_list
         self.speed = self.long / len(self.list)
@@ -1532,7 +1547,7 @@ lang = {2: "ru", 3: "en"}
 
 sistem_seting.start_music(sounds["entar"])
 
-original_scen = 2
+original_menu = 2
 
 save_itom = {}
 
@@ -1562,8 +1577,13 @@ while RUN:
     if menu == 1:
 
         if playr_now.hp <= 0:
-            menu = 3
+            original_menu = 3
+            menu = 4
             sistem_seting.start_music(sounds["recant"])
+            if zith.RAZMER - 8 >= len(meta_progress["open soul"]):
+                Soul_class.unlock_soul()
+                Scena.scena = Gif("новая_жиза", True, 1)
+
 
         sc_main.blit(tesxture_blok["fon"], (0, 0))
 
@@ -1744,9 +1764,6 @@ while RUN:
                         zith.smena(playr_now.y)
                         menu = 2
 
-
-
-
             if i.type == pygame.QUIT:
                 pass
                 RUN = False
@@ -1803,22 +1820,16 @@ while RUN:
         sc_main.blit(pygame.transform.scale(Scena.scena.render(1 / FPS), real_screen), (0, 0))
 
         if not Scena.scena.type:
-            menu = 1
+            menu = original_menu
             Scena.scena = False
             zith.smena(playr_now.y)
 
         for i in pygame.event.get():
             if i.type == pygame.KEYDOWN:
                 if i.key == pygame.K_e:
-                    menu = 1
+                    menu = original_menu
                     Scena.scena = False
                     zith.smena(playr_now.y)
-
-
-
-
-
-                #перерождение
 
     elif menu == 5:
         sc_main.blit(tesxture_blok["seting"], (0, 0))
@@ -1836,7 +1847,7 @@ while RUN:
 
                 if i.button == 1:
                     if BUTTON == 1:
-                        menu = original_scen
+                        menu = original_menu
 
                     if 2 <= BUTTON <= 3:
                         option_settings["languje"] = lang[BUTTON]
