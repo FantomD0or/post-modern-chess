@@ -811,8 +811,8 @@ class World:
             for y in range(self.RAZMER):
                 if mesto[x][y]:
                     if mesto[x][y].more_inf["trans"]:
-                        holst.blit(mesto[x][y].foto, (x * 50 * size - (mesto[x][y].foto.get_size()[0] / 4) * size,
-                                    y * 50 * size - (mesto[x][y].foto.get_size()[1] / 4) * size))
+                        holst.blit(mesto[x][y].foto, (x * 50 + 25 - (mesto[x][y].foto.get_size()[0] / 2),
+                                    y * 50 + 25 - (mesto[x][y].foto.get_size()[1] / 2)))
                     else:
                         holst.blit(mesto[x][y].foto, (x * 50, y * 50))
 
@@ -1126,7 +1126,7 @@ class World:
                 smenit = True
 
             elif y < -750 and self.we_now.name != "end":
-                self.we_now = Place.load_place_from_data_base(3)
+                self.we_now = Place.load_place_from_data_base(6)
                 smenit = True
 
             if smenit:
