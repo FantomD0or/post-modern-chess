@@ -27,6 +27,7 @@ def smart_int(a):
         return a
 
 
+
 class Player:
     def __init__(self, x, y, hp, cards, artefact, all_kill, soul):
         self.x = x
@@ -54,9 +55,11 @@ class Sistem:
                 self.sound.stop()
                 self.sound = music
                 self.sound.play(-1)
+                self.sound.set_volume(option_settings["music_voluom"]/100)
             else:
                 self.sound = music
                 self.sound.play(-1)
+                self.sound.set_volume(option_settings["music_voluom"]/100)
         except:
             if self.sound:
                 self.sound.stop()
@@ -76,12 +79,14 @@ class Sistem:
             "round_artifact": 0,
             "mous_on": False,
             "figur on mous": False,
-            "soul vibor": 0
+            "soul vibor": 0,
+            "map": [0, 0, 0]
         }
 
 option_settings = {
     "all_png": "base texsture pack",
-    "languje": "ru"
+    "languje": "ru",
+    "chate": False
 }
 
 class Soul_class:
@@ -165,7 +170,8 @@ setting = {
     "round_artifact": 0,
     "mous_on": False,
     "figur on mous": False,
-    "soul vibor": 0
+    "soul vibor": 0,
+    "map": [0, 0, 0]
 }
 
 
@@ -339,13 +345,9 @@ class Save:
         data = sqlite3.connect('data base/save_file.db')
 
         for i in range(1):
-
             cursor = data.cursor()
-
             enter = cursor.execute("SELECT * FROM save_staf")
-
             _settings = {}
-
             for res in enter:
                 _settings[res[0]] = smart_int(res[1])
 
@@ -381,11 +383,17 @@ class Save:
                 now = ast.literal_eval(res[1])
             return now
 
-    def geting_staf(self, what, to):
-        with sqlite3.connect('data base/save_file.db') as data:
+    def update_stuff(self, what, to):
+        db_path = 'data base/save_file.db'
+
+        with sqlite3.connect(db_path) as data:
             cursor = data.cursor()
-            l = "UPDATE save_staf SET valium = '" + str(to) + "' WHERE tipe = '" + str(what) + "'"
-            cursor.execute(l)
+
+            query = "UPDATE save_staf SET valium = ? WHERE tipe = ?"
+
+            cursor.execute(query, (to, what))
+
+            data.commit()
 
 True_Save = Save()
 
@@ -408,7 +416,8 @@ tesxture_blok = {
            True_Save.foto_load("hp2.png")],
     "reset": True_Save.foto_load("vibor.png"),
     "seting": True_Save.foto_load("seting.png"),
-    "soul_sect": True_Save.foto_load("soul_select.png")
+    "soul_sect": True_Save.foto_load("soul_select.png"),
+    "nothing": True_Save.foto_load("")
 }
 
 True_Save.reload()
@@ -529,7 +538,10 @@ class Objet:
                 i -= 1
 
         elif "move_" in self.ai["type"]:
-            vectore = go_to_[self.ai["type"][5:]]
+            vectore = [0, 0]
+            com = self.ai["type"].split("_")
+            vectore[0] = math.floor(go_to_[com[1]][0] * int(com[2]))
+            vectore[1] = math.floor(go_to_[com[1]][1] * int(com[2]))
             if were.exsit_to_space(x + vectore[0], y + vectore[1]):
                 were.local_World[x + vectore[0]][y + vectore[1]] = were.local_World[x][y]
                 were.local_World[x][y] = False
@@ -654,10 +666,8 @@ class Cards:
         if "dropplayre_" in self.type:
             obj_id = int(self.type.split("_")[1])
             where.local_World[playr_now.x][0] = Objet.load_obj_from_data_base(obj_id)
-            where.local_World[playr_now.x][0].ai["type"] = "move_down"
+            where.local_World[playr_now.x][0].ai["type"] = "move_down_1"
             where.local_World[playr_now.x][0].ai["use"] = True
-
-
 
         playr_now.cards.pop(setting["cards_now"])
         if setting["cards_now"]: setting["cards_now"] -= 1
@@ -734,21 +744,16 @@ class Place:
             else:
                 cursor.execute("""SELECT * FROM locathion_inf WHERE name = ?""", (search,))
 
-
-
             now = 0
 
             for res in cursor:
                 now = Place(res[1], True_Save.load_chans(res[4]), True_Save.foto_load(res[2]), True_Save.foto_load(res[3]),
                             res[5],  truE(res[6]), truE(res[7]))
 
-
             if truE(now.fon):
                 now.fon = Gif(res[6], "cycle", 2)
             if truE(now.music):
                 now.music = pygame.mixer.Sound(now.music)
-
-
 
             return now
 
@@ -816,8 +821,14 @@ class World:
                     else:
                         holst.blit(mesto[x][y].foto, (x * 50, y * 50))
 
+        if type(setting["choss_what"]) == type([]):
+            pygame.draw.rect(holst, (255, 255, 0),
+                             (setting["choss_what"][0] * 50,
+                              setting["choss_what"][1] * 50
+                              , 50, 50), 3)
+
         self.jod(holst)
-        sc_main.blit(pygame.transform.scale(holst, (400, 400)), (400, 200))
+
 
         self.other_staf()
         self.choss_render()
@@ -825,9 +836,8 @@ class World:
         self.texst_dialog()
         self.hp_render()
 
-
-
-
+        sc_main.blit(pygame.transform.scale(holst, (400 + setting["map"][2], 400 + setting["map"][2])),
+                     (400 + setting["map"][0], 200 + setting["map"][1]))
 
         if setting["figur on mous"]:
             sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)), (scale.mous_get()))
@@ -835,10 +845,6 @@ class World:
             sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)),
                          (400 + playr_now.x % self.RAZMER * 50 * size,
                           200 + playr_now.y % self.RAZMER * 50 * size))
-
-
-
-        pass
 
     def jod(self, where):
         size = 8 / self.RAZMER
@@ -848,16 +854,12 @@ class World:
             "only_kill": (228, 155, 15)
         }
 
-
         if setting["figur on mous"]:
             for i in map:
                 FIG = map[i]
                 pygame.draw.rect(where, cloro[FIG[0]], ((playr_now.x - FIG[1])%self.RAZMER * 50,
                                                       (playr_now.y - FIG[2])%self.RAZMER * 50,
                                                       50 * size, 50 * size))
-
-
-
 
     def hp_render(self):
         for i in range(playr_now.hp):
@@ -912,10 +914,6 @@ class World:
             elif type(setting["choss_what"][0]) == int:
                 if zith.local_World[setting["choss_what"][0]][setting["choss_what"][1]]:
                     text = zith.local_World[setting["choss_what"][0]][setting["choss_what"][1]].name
-
-
-
-            #text = "круть! \n это работает \n я как минимум хочу \n я хочу верить"
 
             writing_text = []
             time_text = text.split("\n")
@@ -984,15 +982,8 @@ class World:
                                     r += 1
 
     def choss_render(self):
-        SIZE = 8/zith.RAZMER
-        if setting["choss_what"]:
-            if setting["choss_what"] == "cards":
-                pygame.draw.rect(sc_main, (255, 255, 0), (112, 782, 76, 106), 3)
-            elif type(setting["choss_what"]) == type([]):
-                pygame.draw.rect(sc_main, (255, 255, 0),
-                                 (400 + setting["choss_what"][0] * (50 * SIZE),
-                                  200 + setting["choss_what"][1] * (50 * SIZE)
-                                  , 50, 50), 3)
+        if setting["choss_what"] == "cards":
+            pygame.draw.rect(sc_main, (255, 255, 0), (112, 782, 76, 106), 3)
         if type(setting["item"]) == int:
             pygame.draw.rect(sc_main, (255, 255, 0), (960 + setting["item"] % 6 * 40 - 3,
                                                       229 + math.floor(setting["item"] / 6) * 40 - 3,
@@ -1000,13 +991,13 @@ class World:
 
     def room_generate(self, x, y):
 
-        if self.we_now.type == "free":
+        nomdore_desk_x = math.floor(x/self.RAZMER)
+        nomdore_desk_y = math.floor(y/self.RAZMER)
 
-            _x = math.floor(x / self.RAZMER)
-            _y = math.floor(y / self.RAZMER)
+        if self.we_now.type == "free":
             self.smena(y)
             self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
-            code_input = int((str(self.seed % 10000) + str(_x) + str(_y)).replace("-", "")) % 100000
+            code_input = int((str(self.seed % 10000) + str(x) + str(y)).replace("-", "")) % 100000
             random.seed(code_input)
 
             pass
@@ -1018,6 +1009,13 @@ class World:
                         if placing.type == "portal":
                             placing.more_inf["teleport"] = random.randint(1, code_input % 10 + 2) * 8
 
+                        elif placing.type == "big":
+                            x_index = math.floor(x_index/2)
+                            y_index = math.floor(y_index/2)
+                            for _x in range(2):
+                                for _y in range(2):
+                                    self.local_World[x_index - _x][y_index - _y] = self.local_World[x_index][y_index]
+
                     self.local_World[x_index][y_index] = placing
 
             if self.we_now.name == "medium":
@@ -1028,12 +1026,12 @@ class World:
                             self.local_World[0 + _X][2 + _Y] = Objet.load_obj_from_data_base(8)
                     self.local_World[1][3] = Objet.load_obj_from_data_base(7)
 
-                if _y == math.floor(-250 / self.RAZMER) or _y+1 == math.floor(-250 / self.RAZMER):
+                if nomdore_desk_y == math.floor(-250 / self.RAZMER) or nomdore_desk_y+1 == math.floor(-250 / self.RAZMER):
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(33)
-                if _y == math.floor(-550 / self.RAZMER) or _y + 1 == math.floor(-550 / self.RAZMER):
+                if nomdore_desk_y == math.floor(-550 / self.RAZMER) or nomdore_desk_y + 1 == math.floor(-550 / self.RAZMER):
                     self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(37)
-                if math.floor(-550/ self.RAZMER) > _y > math.floor(-660/ self.RAZMER):
+                if math.floor(-550/ self.RAZMER) > nomdore_desk_y > math.floor(-660/ self.RAZMER):
                     self.local_World = [[Objet.load_obj_from_data_base(38) for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(37)
 
@@ -1234,11 +1232,11 @@ class World:
                         for i in range(self.RAZMER):
                             get = random.randint(0, self.RAZMER - 1)
                             self.local_World[self.RAZMER-1][i] = Objet.load_obj_from_data_base(34)
-                            self.local_World[self.RAZMER-1][i].ai["type"] = "move_left"
+                            self.local_World[self.RAZMER-1][i].ai["type"] = "move_left_1"
                             self.local_World[self.RAZMER - 1][i].ai["use"] = True
                             self.local_World[self.RAZMER-1][i].foto = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][i].foto, 180)
                         self.local_World[self.RAZMER - 1][get] = Objet.load_obj_from_data_base(35)
-                        self.local_World[self.RAZMER - 1][get].ai["type"] = "move_left"
+                        self.local_World[self.RAZMER - 1][get].ai["type"] = "move_left_1"
                         self.local_World[self.RAZMER - 1][get].ai["use"] = True
                         self.local_World[self.RAZMER - 1][get].foto = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][get].foto, 180)
 
@@ -1246,7 +1244,7 @@ class World:
                     for i in range(3):
                         get = random.randint(0, self.RAZMER-1)
                         self.local_World[get][0] = Objet.load_obj_from_data_base(35)
-                        self.local_World[get][0].ai["type"] = "move_down"
+                        self.local_World[get][0].ai["type"] = "move_down_1"
                         self.local_World[get][0].ai["use"] = True
                         self.local_World[get][0].foto = pygame.transform.rotate(self.local_World[get][0].foto, 270)
 
@@ -1492,9 +1490,11 @@ igra_gui = IMenu([
                  ])
 
 kill_gui = IMenu([
-      [497, 773, 186], # назад в меню
-      [737, 773, 186], # выбрать
-      [782, 485, 939, 569] # следущий
+      [497, 773, 93], #выход
+      [737, 773, 93], #играть
+      [0, 0, 100, 900], #текстур пак
+      [784, 372, 50], #прошлая игра
+      [984, 768, 93] #настройки
       ])
 
 reset_gui = IMenu([
@@ -1508,7 +1508,7 @@ seting_gui = IMenu([
     [972, 20, 1178, 110], #выход
     [237, 129, 414, 230], #русский язык
     [237, 242, 414, 343], #англиский язык
-    [75, 590, 237, 636]   #музыка
+    [75, 590, 537, 636]   #музыка
 ])
 
 soul_select_gui = IMenu([
@@ -1547,6 +1547,8 @@ lang = {2: "ru", 3: "en"}
 
 sistem_seting.start_music(sounds["entar"])
 
+mus = line((0, 0, 0), (255, 255, 255), [75, 590, 537, 636])
+
 original_menu = 2
 
 save_itom = {}
@@ -1563,6 +1565,7 @@ while RUN:
 
 
     if Scena.scena:
+        original_menu = menu
         menu = 4
 
 
@@ -1577,8 +1580,7 @@ while RUN:
     if menu == 1:
 
         if playr_now.hp <= 0:
-            original_menu = 3
-            menu = 4
+            menu = 3
             sistem_seting.start_music(sounds["recant"])
             if zith.RAZMER - 8 >= len(meta_progress["open soul"]):
                 Soul_class.unlock_soul()
@@ -1679,7 +1681,11 @@ while RUN:
                     elif BUTTON == 14:
                         True_Save.creat_save(playr_now)
 
-                if i.button == 4: # Колесико вверх
+                    elif BUTTON == 15:
+                        original_menu = menu
+                        menu = 5
+
+                if i.button == 5: # Колесико вверх
                     if BUTTON == 7:
 
                         setting["scrool_opisanie"] += 1
@@ -1691,8 +1697,7 @@ while RUN:
                     if 10 <= BUTTON <= 13:
                         setting["scrool_chat"] += 1
 
-
-                if i.button == 5: # Колесико вниз
+                if i.button == 4: # Колесико вниз
                     if BUTTON == 7:
                         if setting["scrool_opisanie"]:
                             setting["scrool_opisanie"] -= 1
@@ -1708,7 +1713,28 @@ while RUN:
 
 
             if i.type == pygame.KEYDOWN:
+
+                if i.key == pygame.K_LEFT:
+                    setting["map"][0] -= 25
+                if i.key == pygame.K_RIGHT:
+                    setting["map"][0] += 25
+                if i.key == pygame.K_UP:
+                    setting["map"][1] -= 25
+                if i.key == pygame.K_DOWN:
+                    setting["map"][1] += 25
+                if i.key == pygame.K_EQUALS:
+                    setting["map"][2] += 25
+                    setting["map"][1] -= 25/2
+                    setting["map"][0] -= 25/2
+                if i.key == pygame.K_MINUS:
+                    setting["map"][2] -= 25
+                    setting["map"][1] += 25/2
+                    setting["map"][0] += 25/2
+                if i.key == pygame.K_h:
+                    setting["map"] = [0, 0, 0]
+
                 move(zith, i.key, playr_now.soul)
+
 
 
             if i.type == pygame.QUIT:
@@ -1754,15 +1780,17 @@ while RUN:
                                 True_Save.reload()
 
                     elif BUTTON == 4:
-
-
                         playr_now = True_Save.start_seting()
                         start_locashon()
                         True_Save.reload()
                         playr_now = True_Save.up_save()
                         zith.we_now.name = False
                         zith.smena(playr_now.y)
-                        menu = 2
+                        menu = 1
+
+                    elif BUTTON == 5:
+                        menu = 5
+                        original_menu = 2
 
             if i.type == pygame.QUIT:
                 pass
@@ -1833,6 +1861,8 @@ while RUN:
 
     elif menu == 5:
         sc_main.blit(tesxture_blok["seting"], (0, 0))
+        mus.print(option_settings["music_voluom"], 100)
+        BUTTON = seting_gui.button_mous(scale.mous_get())
 
         for i in range(2):
             if lang[i+2] == option_settings["languje"]:
@@ -1843,15 +1873,17 @@ while RUN:
             if i.type == pygame.KEYDOWN:
                 pass
             if i.type == pygame.MOUSEBUTTONDOWN:
-                BUTTON = seting_gui.button_mous(scale.mous_get())
-
                 if i.button == 1:
                     if BUTTON == 1:
                         menu = original_menu
 
                     if 2 <= BUTTON <= 3:
                         option_settings["languje"] = lang[BUTTON]
-                        True_Save.geting_staf("languge", lang[BUTTON])
+                        True_Save.update_stuff("languge", lang[BUTTON])
+
+                    if BUTTON == 4:
+                        option_settings["music_voluom"] = math.floor((scale.mous_get()[0] - 75) / (537/100))
+                        sistem_seting.start_music(sistem_seting.sound)
 
             if i.type == pygame.QUIT:
                 RUN = False
