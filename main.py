@@ -27,6 +27,7 @@ def smart_int(a):
         return a
 
 
+
 class Player:
     def __init__(self, x, y, hp, cards, artefact, all_kill, soul):
         self.x = x
@@ -49,20 +50,51 @@ class Sistem:
         self.sound = sound
 
     def start_music(self, music):
-        if self.sound:
-            self.sound.stop()
-            self.sound = music
-            self.sound.play(-1)
-        else:
-            self.sound = music
-            self.sound.play(-1)
+        try:
+            if self.sound:
+                self.sound.stop()
+                self.sound = music
+                self.sound.play(-1)
+                self.sound.set_volume(option_settings["music_voluom"]/100)
+            else:
+                self.sound = music
+                self.sound.play(-1)
+                self.sound.set_volume(option_settings["music_voluom"]/100)
+        except:
+            if self.sound:
+                self.sound.stop()
+            self.sound = False
+
+
+
+    def base_seting(self):
+        return {
+            "cards_now": 0,
+            "choss_what": False,
+            "scrool_opisanie": 0,
+            "scrool_chat": 0,
+            "dialog": 0,
+            "item": False,
+            "round_itom": 0,
+            "round_artifact": 0,
+            "mous_on": False,
+            "figur on mous": False,
+            "soul vibor": 0,
+            "map": [0, 0, 0]
+        }
+
+option_settings = {
+    "all_png": "base texsture pack",
+    "languje": "ru",
+    "chate": False
+}
 
 class Soul_class:
-    def __init__(self, move_map, png, name):
+    def __init__(self, move_map, png, name, gid):
         self.move_map = move_map
         self.png = png
         self.name = name
-
+        self.gid = gid
         self.razbienie(move_map)
 
     def razbienie(self, _move_map):
@@ -76,7 +108,6 @@ class Soul_class:
         map = _move_map.split(",")
         for i in map:
             for_time = []
-
             if i[1] in tipe:
                 for_time.append(tipe[i[1]])
             for_time.append(smart_int(i[2:4]))
@@ -94,9 +125,39 @@ class Soul_class:
 
 
             for res in cursor:
-                for_time = Soul_class(res[1], True_Save.foto_load(res[3]), res[2])
+                for_time = Soul_class(res[1], True_Save.foto_load(res[3]), res[2], True_Save.foto_load(res[4]))
 
             return for_time
+
+    def get_all_soul(self = None):
+        datka = sqlite3.connect('data base/save_file.db')
+
+        cursor = datka.cursor()
+        cursor.execute("""SELECT haw FROM metaprogress WHERE id = 1""")
+        for res in cursor:
+            for_time = res[0]
+
+        for_time = for_time.split(",")
+        returning = []
+
+        for i in for_time:
+            returning.append(Soul_class.load_act_soul_data_base(int(i)))
+
+        return returning
+
+    def unlock_soul(self=None):
+        with sqlite3.connect('data base/save_file.db') as datka:
+            cursor = datka.cursor()
+            cursor.execute("SELECT haw FROM metaprogress WHERE id = 1")
+            res = cursor.fetchone()
+
+            if res:
+                for_time = res[0]
+                new_index = len(for_time.split(",")) + 1
+                updated_haw = f"{for_time},{new_index}"
+                cursor.execute("UPDATE metaprogress SET haw = ? WHERE id = 1", (updated_haw,))
+                datka.commit()
+        meta_progress["open soul"] = Soul_class.get_all_soul()
 
 setting = {
     "cards_now": 0,
@@ -108,21 +169,25 @@ setting = {
     "round_itom": 0,
     "round_artifact": 0,
     "mous_on": False,
-    "figur on mous": False
-
+    "figur on mous": False,
+    "soul vibor": 0,
+    "map": [0, 0, 0]
 }
+
 
 
 
 class Scale:
     def __init__(self, _real_screen, _ekran):
-        self.scale_up = _ekran[0] / _real_screen[0]
-        self.scale_right = _ekran[1] / _real_screen[1]
+        self.scale_up = _ekran[0]
+        self.scale_right = _ekran[1]
     
     def mous_get(self):
         up, right = pygame.mouse.get_pos()
-        up = up*self.scale_up
-        right = right * self.scale_right
+        up = up * (ekran[0] / sc_real.get_width())
+        right = right * (ekran[1] / sc_real.get_height())
+        up = math.floor(up)
+        right = math.floor(right)
         return up, right
 
 
@@ -134,7 +199,7 @@ screen_height = root.winfo_screenheight()
 
 real_screen = [screen_width * (600/1200) * 1.3, screen_height * (1200/1920) * 1.3]
 scale = Scale(real_screen, ekran)
-sc_real = pygame.display.set_mode(real_screen)
+sc_real = pygame.display.set_mode(real_screen, pygame.RESIZABLE)
 
 scale_texst = math.floor(36 * (ekran[0]/screen_width))
 
@@ -147,14 +212,6 @@ pygame.display.set_icon(pygame.image.load("png_like/logo-Photoroom.png"))
 
 
 
-option_settings = {
-    "all_png": "base texsture pack",
-    "languje": "ru"
-}
-
-all_gif = {
-
-}
 
 
 class Save:
@@ -288,13 +345,9 @@ class Save:
         data = sqlite3.connect('data base/save_file.db')
 
         for i in range(1):
-
             cursor = data.cursor()
-
             enter = cursor.execute("SELECT * FROM save_staf")
-
             _settings = {}
-
             for res in enter:
                 _settings[res[0]] = smart_int(res[1])
 
@@ -330,11 +383,17 @@ class Save:
                 now = ast.literal_eval(res[1])
             return now
 
-    def geting_staf(self, what, to):
-        with sqlite3.connect('data base/save_file.db') as data:
+    def update_stuff(self, what, to):
+        db_path = 'data base/save_file.db'
+
+        with sqlite3.connect(db_path) as data:
             cursor = data.cursor()
-            l = "UPDATE save_staf SET valium = '" + str(to) + "' WHERE tipe = '" + str(what) + "'"
-            cursor.execute(l)
+
+            query = "UPDATE save_staf SET valium = ? WHERE tipe = ?"
+
+            cursor.execute(query, (to, what))
+
+            data.commit()
 
 True_Save = Save()
 
@@ -342,7 +401,13 @@ playr_now = True_Save.start_seting()
 
 sistem_seting = Sistem([], 0, [0, 0], False)
 
+all_gif = {
 
+}
+
+meta_progress = {
+    "open soul": Soul_class.get_all_soul()
+}
 
 tesxture_blok = {
     "fon": True_Save.foto_load("fon.png"),
@@ -350,7 +415,9 @@ tesxture_blok = {
     "hp": [True_Save.foto_load("hp1.png"),
            True_Save.foto_load("hp2.png")],
     "reset": True_Save.foto_load("vibor.png"),
-    "seting": True_Save.foto_load("seting.png")
+    "seting": True_Save.foto_load("seting.png"),
+    "soul_sect": True_Save.foto_load("soul_select.png"),
+    "nothing": True_Save.foto_load("")
 }
 
 True_Save.reload()
@@ -372,6 +439,7 @@ class Gif:
         list = os.listdir("png_like/base texsture pack/gif/" + self.id)
         returning_list = []
         for i in list:
+            if ".png" in i:
                 returning_list.append(True_Save.foto_load("gif/" + self.id + "/" + i))
         self.list = returning_list
         self.speed = self.long / len(self.list)
@@ -419,6 +487,8 @@ class Objet:
                             truE(res[1])
                                    )
 
+
+
             if return_ing.ai:
                 ai_set = {}
                 if "!@#$" in return_ing.ai:
@@ -430,6 +500,8 @@ class Objet:
                 ai_set["type"] = return_ing.ai
 
                 return_ing.ai = ai_set
+            else:
+                return_ing.ai = {}
 
             if True:
                 if "sunduk_" in return_ing.type or "seller_" in return_ing.type:
@@ -451,61 +523,63 @@ class Objet:
                   "right": [1, 0]}
         player_x_y = playr_now.x%were.RAZMER, playr_now.y%were.RAZMER
 
-        if not self.ai["use"]:
-            self.ai["use"] = True
-            if self.ai["type"] == "random":
-                new_x_y = random.randint(0, 2) - 1, random.randint(0, 2) - 1
-                i = 10
-                while i:
-                    if not (new_x_y[0] == 0 and new_x_y[1] == 0):
-                        if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
-                            if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
-                                were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
-                                were.local_World[x][y] = False
-                                i = 1
-                    new_x_y = random.randint(0, 1) * 2 - 1, random.randint(0, 1) * 2 - 1
-                    i -= 1
-
-            elif "move_" in self.ai["type"]:
-                vectore = go_to_[self.ai["type"][5:]]
-                if were.exsit_to_space(x + vectore[0], y + vectore[1]):
-                    were.local_World[x + vectore[0]][y + vectore[1]] = were.local_World[x][y]
-                    were.local_World[x][y] = False
-                else:
-                    were.local_World[x][y] = False
-
-            elif "goplayer" in self.ai["type"]:
-                new_x_y = [0, 0]
-                if player_x_y[0] > x:
-                    new_x_y[0] = 1
-                elif player_x_y[0] < x:
-                    new_x_y[0] = -1
-                elif player_x_y[1] > y:
-                    new_x_y[1] = 1
-                elif player_x_y[1] < y:
-                    new_x_y[1] = -1
-                if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
-                    if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
-                        were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
-                        if new_x_y[0] or new_x_y[1]:
+        self.ai["use"] = True
+        if self.ai["type"] == "random":
+            new_x_y = random.randint(0, 2) - 1, random.randint(0, 2) - 1
+            i = 10
+            while i:
+                if not (new_x_y[0] == 0 and new_x_y[1] == 0):
+                    if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
+                        if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
+                            were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
                             were.local_World[x][y] = False
+                            i = 1
+                new_x_y = random.randint(0, 1) * 2 - 1, random.randint(0, 1) * 2 - 1
+                i -= 1
 
-            elif "bishop" in self.ai["type"]:
-                ex, ey = x, y
-                px, py = player_x_y
+        elif "move_" in self.ai["type"]:
+            vectore = [0, 0]
+            com = self.ai["type"].split("_")
+            vectore[0] = math.floor(go_to_[com[1]][0] * int(com[2]))
+            vectore[1] = math.floor(go_to_[com[1]][1] * int(com[2]))
+            if were.exsit_to_space(x + vectore[0], y + vectore[1]):
+                were.local_World[x + vectore[0]][y + vectore[1]] = were.local_World[x][y]
+                were.local_World[x][y] = False
+            else:
+                were.local_World[x][y] = False
 
-                if (ex, ey) == (px, py):
-                    return (ex, ey)
+        elif "goplayer" in self.ai["type"]:
+            new_x_y = [0, 0]
+            if player_x_y[0] > x:
+                new_x_y[0] = 1
+            elif player_x_y[0] < x:
+                new_x_y[0] = -1
+            elif player_x_y[1] > y:
+                new_x_y[1] = 1
+            elif player_x_y[1] < y:
+                new_x_y[1] = -1
+            if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
+                if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
+                    were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
+                    if new_x_y[0] or new_x_y[1]:
+                        were.local_World[x][y] = False
 
-                dx = 1 if px > ex else -1 if px < ex else 0
-                dy = 1 if py > ey else -1 if py < ey else 0
+        elif "bishop" in self.ai["type"]:
+            ex, ey = x, y
+            px, py = player_x_y
 
-                step_x = dx if dx != 0 else 1
-                step_y = dy if dy != 0 else 1
+            if (ex, ey) == (px, py):
+                return (ex, ey)
 
-                if were.exsit_to_space(step_x + ex, step_y + ey):
-                    were.local_World[ex + step_x][ey + step_y] = self
-                    were.local_World[x][y] = False
+            dx = 1 if px > ex else -1 if px < ex else 0
+            dy = 1 if py > ey else -1 if py < ey else 0
+
+            step_x = dx if dx != 0 else 1
+            step_y = dy if dy != 0 else 1
+
+            if were.exsit_to_space(step_x + ex, step_y + ey):
+                were.local_World[ex + step_x][ey + step_y] = self
+                were.local_World[x][y] = False
 
 class Cards:
     def __init__(self, foto, name, type, leval, more_inf, id):
@@ -592,10 +666,8 @@ class Cards:
         if "dropplayre_" in self.type:
             obj_id = int(self.type.split("_")[1])
             where.local_World[playr_now.x][0] = Objet.load_obj_from_data_base(obj_id)
-            where.local_World[playr_now.x][0].ai["type"] = "move_down"
+            where.local_World[playr_now.x][0].ai["type"] = "move_down_1"
             where.local_World[playr_now.x][0].ai["use"] = True
-
-
 
         playr_now.cards.pop(setting["cards_now"])
         if setting["cards_now"]: setting["cards_now"] -= 1
@@ -672,21 +744,16 @@ class Place:
             else:
                 cursor.execute("""SELECT * FROM locathion_inf WHERE name = ?""", (search,))
 
-
-
             now = 0
 
             for res in cursor:
                 now = Place(res[1], True_Save.load_chans(res[4]), True_Save.foto_load(res[2]), True_Save.foto_load(res[3]),
                             res[5],  truE(res[6]), truE(res[7]))
 
-
             if truE(now.fon):
                 now.fon = Gif(res[6], "cycle", 2)
             if truE(now.music):
                 now.music = pygame.mixer.Sound(now.music)
-
-
 
             return now
 
@@ -701,6 +768,8 @@ class IMenu:
         for i, element in enumerate(self.gui):
             if len(element) == 4:
                 x1, y1, x2, y2 = element
+                if self.test:
+                    pygame.draw.rect(sc_main, (255, 255, 255), (x1, y1, x2 - x1, y2 - y1))
                 if x1 <= m_x <= x2 and y1 <= m_y <= y2:
                     return i + 1
 
@@ -747,10 +816,18 @@ class World:
             for y in range(self.RAZMER):
                 if mesto[x][y]:
                     if mesto[x][y].more_inf["trans"]:
-                        holst.blit(mesto[x][y].foto, (x * 50 * size - (mesto[x][y].foto.get_size()[0] / 4) * size,
-                                    y * 50 * size - (mesto[x][y].foto.get_size()[1] / 4) * size))
+                        holst.blit(mesto[x][y].foto, (x * 50 + 25 - (mesto[x][y].foto.get_size()[0] / 2),
+                                    y * 50 + 25 - (mesto[x][y].foto.get_size()[1] / 2)))
                     else:
                         holst.blit(mesto[x][y].foto, (x * 50, y * 50))
+
+        if type(setting["choss_what"]) == type([]):
+            pygame.draw.rect(holst, (255, 255, 0),
+                             (setting["choss_what"][0] * 50,
+                              setting["choss_what"][1] * 50
+                              , 50, 50), 3)
+
+        self.jod(holst)
 
 
         self.other_staf()
@@ -758,10 +835,9 @@ class World:
         self.texst_inf()
         self.texst_dialog()
         self.hp_render()
-        self.jod(holst)
 
-        sc_main.blit(pygame.transform.scale(holst, (400, 400)), (400, 200))
-
+        sc_main.blit(pygame.transform.scale(holst, (400 + setting["map"][2], 400 + setting["map"][2])),
+                     (400 + setting["map"][0], 200 + setting["map"][1]))
 
         if setting["figur on mous"]:
             sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)), (scale.mous_get()))
@@ -769,10 +845,6 @@ class World:
             sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)),
                          (400 + playr_now.x % self.RAZMER * 50 * size,
                           200 + playr_now.y % self.RAZMER * 50 * size))
-
-
-
-        pass
 
     def jod(self, where):
         size = 8 / self.RAZMER
@@ -782,16 +854,12 @@ class World:
             "only_kill": (228, 155, 15)
         }
 
-
         if setting["figur on mous"]:
             for i in map:
                 FIG = map[i]
                 pygame.draw.rect(where, cloro[FIG[0]], ((playr_now.x - FIG[1])%self.RAZMER * 50,
                                                       (playr_now.y - FIG[2])%self.RAZMER * 50,
                                                       50 * size, 50 * size))
-
-
-
 
     def hp_render(self):
         for i in range(playr_now.hp):
@@ -804,6 +872,9 @@ class World:
         sc_main.blit(nots.render(str(playr_now.y * -1) + " - " + one_to_ABC(int(math.fabs(playr_now.x + 1))), True,
                                  (255, 255, 255)), (0, 0))
         sc_main.blit(pygame.transform.scale(playr_now.soul.png, (182, 217)), (190, 40))
+
+        sc_main.blit(playr_now.soul.gid, (336,663))
+
         if self.up_leval[self.RAZMER+1] - playr_now.y < 0:
             sc_main.blit(nots.render(str((self.up_leval[self.RAZMER+1] - playr_now.y) * -1),
                                      True, (255, 0, 0)), (47, 650))
@@ -843,10 +914,6 @@ class World:
             elif type(setting["choss_what"][0]) == int:
                 if zith.local_World[setting["choss_what"][0]][setting["choss_what"][1]]:
                     text = zith.local_World[setting["choss_what"][0]][setting["choss_what"][1]].name
-
-
-
-            #text = "круть! \n это работает \n я как минимум хочу \n я хочу верить"
 
             writing_text = []
             time_text = text.split("\n")
@@ -915,15 +982,8 @@ class World:
                                     r += 1
 
     def choss_render(self):
-        SIZE = 8/zith.RAZMER
-        if setting["choss_what"]:
-            if setting["choss_what"] == "cards":
-                pygame.draw.rect(sc_main, (255, 255, 0), (112, 782, 76, 106), 3)
-            elif type(setting["choss_what"]) == type([]):
-                pygame.draw.rect(sc_main, (255, 255, 0),
-                                 (400 + setting["choss_what"][0] * (50 * SIZE),
-                                  200 + setting["choss_what"][1] * (50 * SIZE)
-                                  , 50, 50), 3)
+        if setting["choss_what"] == "cards":
+            pygame.draw.rect(sc_main, (255, 255, 0), (112, 782, 76, 106), 3)
         if type(setting["item"]) == int:
             pygame.draw.rect(sc_main, (255, 255, 0), (960 + setting["item"] % 6 * 40 - 3,
                                                       229 + math.floor(setting["item"] / 6) * 40 - 3,
@@ -931,13 +991,13 @@ class World:
 
     def room_generate(self, x, y):
 
-        if self.we_now.type == "free":
+        nomdore_desk_x = math.floor(x/self.RAZMER)
+        nomdore_desk_y = math.floor(y/self.RAZMER)
 
-            _x = math.floor(x / self.RAZMER)
-            _y = math.floor(y / self.RAZMER)
+        if self.we_now.type == "free":
             self.smena(y)
             self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
-            code_input = int((str(self.seed % 10000) + str(_x) + str(_y)).replace("-", "")) % 100000
+            code_input = int((str(self.seed % 10000) + str(x) + str(y)).replace("-", "")) % 100000
             random.seed(code_input)
 
             pass
@@ -949,6 +1009,13 @@ class World:
                         if placing.type == "portal":
                             placing.more_inf["teleport"] = random.randint(1, code_input % 10 + 2) * 8
 
+                        elif placing.type == "big":
+                            x_index = math.floor(x_index/2)
+                            y_index = math.floor(y_index/2)
+                            for _x in range(2):
+                                for _y in range(2):
+                                    self.local_World[x_index - _x][y_index - _y] = self.local_World[x_index][y_index]
+
                     self.local_World[x_index][y_index] = placing
 
             if self.we_now.name == "medium":
@@ -959,12 +1026,12 @@ class World:
                             self.local_World[0 + _X][2 + _Y] = Objet.load_obj_from_data_base(8)
                     self.local_World[1][3] = Objet.load_obj_from_data_base(7)
 
-                if _y == math.floor(-250 / self.RAZMER) or _y+1 == math.floor(-250 / self.RAZMER):
+                if nomdore_desk_y == math.floor(-250 / self.RAZMER) or nomdore_desk_y+1 == math.floor(-250 / self.RAZMER):
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(33)
-                if _y == math.floor(-550 / self.RAZMER) or _y + 1 == math.floor(-550 / self.RAZMER):
+                if nomdore_desk_y == math.floor(-550 / self.RAZMER) or nomdore_desk_y + 1 == math.floor(-550 / self.RAZMER):
                     self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(37)
-                if math.floor(-550/ self.RAZMER) > _y > math.floor(-660/ self.RAZMER):
+                if math.floor(-550/ self.RAZMER) > nomdore_desk_y > math.floor(-660/ self.RAZMER):
                     self.local_World = [[Objet.load_obj_from_data_base(38) for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(37)
 
@@ -1013,22 +1080,24 @@ class World:
                     sistem_seting.boss[0] -= 1
 
     def canculate_tick(self):
+
         self.supruse()
         for x in range(self.RAZMER):
             for y in range(self.RAZMER):
                 if self.local_World[x][y]:
-                    if self.local_World[x][y].ai:
-
-                        self.local_World[x][y].ai_chet(self, x, y)
+                    if self.local_World[x][y].ai != {}:
+                        if not self.local_World[x][y].ai["use"]:
+                            self.local_World[x][y].ai_chet(self, x, y)
 
 
         for x in range(self.RAZMER):
             for y in range(self.RAZMER):
                 if self.local_World[x][y]:
                     if self.local_World[x][y].ai:
-                        self.local_World[x][y].ai["use"]= False
+                        self.local_World[x][y].ai["use"] = False
 
         obj_triger = zith.local_World[playr_now.x%zith.RAZMER][playr_now.y%zith.RAZMER]
+
         if obj_triger:
             if obj_triger.more_inf["kill"]:
                 playr_now.uron(obj_triger.more_inf["kill"])
@@ -1055,7 +1124,7 @@ class World:
                 smenit = True
 
             elif y < -750 and self.we_now.name != "end":
-                self.we_now = Place.load_place_from_data_base(3)
+                self.we_now = Place.load_place_from_data_base(6)
                 smenit = True
 
             if smenit:
@@ -1121,7 +1190,6 @@ class World:
                             all_gif["profil"] = self.we_now.fon
                         self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
 
-
                     elif "transform_" in run.type:
                         what_take = run.type.split("_")
                         what_take[1] = int(what_take[1])
@@ -1164,11 +1232,11 @@ class World:
                         for i in range(self.RAZMER):
                             get = random.randint(0, self.RAZMER - 1)
                             self.local_World[self.RAZMER-1][i] = Objet.load_obj_from_data_base(34)
-                            self.local_World[self.RAZMER-1][i].ai["type"] = "move_left"
+                            self.local_World[self.RAZMER-1][i].ai["type"] = "move_left_1"
                             self.local_World[self.RAZMER - 1][i].ai["use"] = True
                             self.local_World[self.RAZMER-1][i].foto = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][i].foto, 180)
                         self.local_World[self.RAZMER - 1][get] = Objet.load_obj_from_data_base(35)
-                        self.local_World[self.RAZMER - 1][get].ai["type"] = "move_left"
+                        self.local_World[self.RAZMER - 1][get].ai["type"] = "move_left_1"
                         self.local_World[self.RAZMER - 1][get].ai["use"] = True
                         self.local_World[self.RAZMER - 1][get].foto = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][get].foto, 180)
 
@@ -1176,7 +1244,7 @@ class World:
                     for i in range(3):
                         get = random.randint(0, self.RAZMER-1)
                         self.local_World[get][0] = Objet.load_obj_from_data_base(35)
-                        self.local_World[get][0].ai["type"] = "move_down"
+                        self.local_World[get][0].ai["type"] = "move_down_1"
                         self.local_World[get][0].ai["use"] = True
                         self.local_World[get][0].foto = pygame.transform.rotate(self.local_World[get][0].foto, 270)
 
@@ -1248,7 +1316,7 @@ class line:
 
 class Trangul:
     def round(x, y, r, d):
-        return math.sin(r)*d - x, math.cos(r)*d - y
+        return math.sin(r)*d + x, math.cos(r)*d + y
 
     def angel(x1, y1, x2, y2):
         return math.atan2(y1-y2, x1-x2)
@@ -1307,7 +1375,12 @@ def move(world, ikey, for_who):
     elif ikey == pygame.K_TAB:
         job = True
 
+    elif ikey == pygame.K_i:
+        comand(input("команду пж: "))
+
     if job:
+
+        pass
 
         zith.triger()
         zith.canculate_tick()
@@ -1332,7 +1405,6 @@ def other_mov(ichela):
         if [playr_now.x%zith.RAZMER - now[1], playr_now.y%zith.RAZMER - now[2]] == ichela:
             move(zith, i, playr_now.soul)
 
-
 def renre_reset():
     # rad * 225 начало линии
     # rad * 45 конец линии
@@ -1349,24 +1421,24 @@ def renre_reset():
     if len_:
         pygame.draw.circle(sc_main, (255, 0, 0),
                            Trangul.round(200, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103),
-                           25
-                           )
-        Trangul.round(225 - 25, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103)
+                           25)
+#        Trangul.round(225 - 25, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103)
+
         for i in range(len_):
             sc_main.blit(pygame.transform.scale(playr_now.cards[i].foto, (50, 75)),
-                         Trangul.round(225 - 25, 255 - 37, math.pi / len_ * setting["round_itom"] + rad * 45, 103)
-                         )
+                         Trangul.round(225 - 25, 255 - 37, math.pi / len_ * i + rad * 45, 103))
+
     if len2_:
         pygame.draw.circle(sc_main, (255, 0, 0),
                            Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * setting["round_artifact"] + rad * 300, 103),
                            25)
+
         for i in range(len2_):
             sc_main.blit(pygame.transform.scale(playr_now.artefact[i].foto, (50, 50)),
-                         Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * setting["round_artifact"] + rad * 300, 103)
-                         )
+                         Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * i + rad * 300, 103))
 
 def start_locashon():
-
+    zith.we_now = Place.load_place_from_data_base(1)
     zith.local_World = [[False for _ in range(zith.RAZMER)] for _ in range(zith.RAZMER)]
     zith.local_World[7][7] = Objet.load_obj_from_data_base(40)
     zith.local_World[6][7] = Objet.load_obj_from_data_base(41)
@@ -1375,6 +1447,16 @@ def start_locashon():
     playr_now.cards.append(Cards.load_card_from_data_base(3))
     playr_now.artefact.append(Cards.load_card_from_data_base(4))
 
+def comand(com):
+    _comand = com.split(" ")
+    if _comand[0] == "y":
+        playr_now.y = int(_comand[1])
+    elif _comand[0] == "x":
+        playr_now.x = int(_comand[1])
+    elif _comand[0] == "smena":
+        zith.smena(playr_now.y)
+    elif _comand[0] == "loacsion":
+        zith.we_now = Place.load_place_from_data_base(int(_comand[1]))
 
 
 zith = World(random.randint(0, 100000000), Place("", [], "", "", "free", "", ""))
@@ -1404,14 +1486,15 @@ igra_gui = IMenu([
     [269, 293, 383, 512], #кнопка дилога 3
     [960, 229, 1199, 708], #артевакты
     [1146, 1, 1198, 53], #сохронение
-
+    [1083, 4, 1137, 56] #настройки
                  ])
 
 kill_gui = IMenu([
-      [497, 773, 186],
-      [737, 773, 186],
-      [0, 0, 300, 900],
-      [782, 368, 50]
+      [497, 773, 93], #выход
+      [737, 773, 93], #играть
+      [0, 0, 100, 900], #текстур пак
+      [784, 372, 50], #прошлая игра
+      [984, 768, 93] #настройки
       ])
 
 reset_gui = IMenu([
@@ -1425,10 +1508,16 @@ seting_gui = IMenu([
     [972, 20, 1178, 110], #выход
     [237, 129, 414, 230], #русский язык
     [237, 242, 414, 343], #англиский язык
-    [75, 590, 237, 636]   #музыка
+    [75, 590, 537, 636]   #музыка
 ])
 
-
+soul_select_gui = IMenu([
+    [481, 757, 86],
+    [766, 763, 84],
+    [760, 485, 966, 566],
+    [520, 77, 1058, 308],
+    [90, 128, 307, 345]
+])
 
 sounds = {
     "locashon 1": pygame.mixer.Sound("music/SFX_852.mp3"),
@@ -1458,7 +1547,9 @@ lang = {2: "ru", 3: "en"}
 
 sistem_seting.start_music(sounds["entar"])
 
-original_scen = 2
+mus = line((0, 0, 0), (255, 255, 255), [75, 590, 537, 636])
+
+original_menu = 2
 
 save_itom = {}
 
@@ -1466,7 +1557,7 @@ while RUN:
 
     sc_main.blit(nots.render("версия 0.8", True, (255, 255, 255)), (500 * scale.scale_right, 0))
 
-    scaled_canvas = pygame.transform.scale(sc_main, real_screen)
+    scaled_canvas = pygame.transform.scale(sc_main, (sc_real.get_width(), sc_real.get_height()))
 
     sc_real.blit(scaled_canvas, (0, 0))
 
@@ -1474,6 +1565,7 @@ while RUN:
 
 
     if Scena.scena:
+        original_menu = menu
         menu = 4
 
 
@@ -1490,6 +1582,10 @@ while RUN:
         if playr_now.hp <= 0:
             menu = 3
             sistem_seting.start_music(sounds["recant"])
+            if zith.RAZMER - 8 >= len(meta_progress["open soul"]):
+                Soul_class.unlock_soul()
+                Scena.scena = Gif("новая_жиза", True, 1)
+
 
         sc_main.blit(tesxture_blok["fon"], (0, 0))
 
@@ -1585,7 +1681,11 @@ while RUN:
                     elif BUTTON == 14:
                         True_Save.creat_save(playr_now)
 
-                if i.button == 4: # Колесико вверх
+                    elif BUTTON == 15:
+                        original_menu = menu
+                        menu = 5
+
+                if i.button == 5: # Колесико вверх
                     if BUTTON == 7:
 
                         setting["scrool_opisanie"] += 1
@@ -1597,8 +1697,7 @@ while RUN:
                     if 10 <= BUTTON <= 13:
                         setting["scrool_chat"] += 1
 
-
-                if i.button == 5: # Колесико вниз
+                if i.button == 4: # Колесико вниз
                     if BUTTON == 7:
                         if setting["scrool_opisanie"]:
                             setting["scrool_opisanie"] -= 1
@@ -1614,7 +1713,28 @@ while RUN:
 
 
             if i.type == pygame.KEYDOWN:
+
+                if i.key == pygame.K_LEFT:
+                    setting["map"][0] -= 25
+                if i.key == pygame.K_RIGHT:
+                    setting["map"][0] += 25
+                if i.key == pygame.K_UP:
+                    setting["map"][1] -= 25
+                if i.key == pygame.K_DOWN:
+                    setting["map"][1] += 25
+                if i.key == pygame.K_EQUALS:
+                    setting["map"][2] += 25
+                    setting["map"][1] -= 25/2
+                    setting["map"][0] -= 25/2
+                if i.key == pygame.K_MINUS:
+                    setting["map"][2] -= 25
+                    setting["map"][1] += 25/2
+                    setting["map"][0] += 25/2
+                if i.key == pygame.K_h:
+                    setting["map"] = [0, 0, 0]
+
                 move(zith, i.key, playr_now.soul)
+
 
 
             if i.type == pygame.QUIT:
@@ -1642,7 +1762,7 @@ while RUN:
                         zith.smena(playr_now.y)
                         start_locashon()
 
-                        menu = 1
+                        menu = 6
 
                         if save_itom:
                             if save_itom[1].type == "clear":
@@ -1660,8 +1780,6 @@ while RUN:
                                 True_Save.reload()
 
                     elif BUTTON == 4:
-
-
                         playr_now = True_Save.start_seting()
                         start_locashon()
                         True_Save.reload()
@@ -1670,8 +1788,9 @@ while RUN:
                         zith.smena(playr_now.y)
                         menu = 1
 
-
-
+                    elif BUTTON == 5:
+                        menu = 5
+                        original_menu = 2
 
             if i.type == pygame.QUIT:
                 pass
@@ -1695,15 +1814,15 @@ while RUN:
                             menu = 2
 
                             sistem_seting.start_music(sounds["entar"])
-
                             save_itom = ("cards", playr_now.cards[setting["round_itom"]])
+                            setting = sistem_seting.base_seting()
 
                     elif BUTTON == 2:
                         menu = 2
 
                         sistem_seting.start_music(sounds["entar"])
-
                         save_itom = ("cards", playr_now.artefact[setting["round_artifact"]])
+                        setting = sistem_seting.base_seting()
 
                 if i.button == 4: #колёсеко верх
                     if BUTTON == 3:
@@ -1729,25 +1848,21 @@ while RUN:
         sc_main.blit(pygame.transform.scale(Scena.scena.render(1 / FPS), real_screen), (0, 0))
 
         if not Scena.scena.type:
-            menu = 1
+            menu = original_menu
             Scena.scena = False
             zith.smena(playr_now.y)
 
         for i in pygame.event.get():
             if i.type == pygame.KEYDOWN:
                 if i.key == pygame.K_e:
-                    menu = 1
+                    menu = original_menu
                     Scena.scena = False
                     zith.smena(playr_now.y)
 
-
-
-
-
-                #перерождение
-
     elif menu == 5:
         sc_main.blit(tesxture_blok["seting"], (0, 0))
+        mus.print(option_settings["music_voluom"], 100)
+        BUTTON = seting_gui.button_mous(scale.mous_get())
 
         for i in range(2):
             if lang[i+2] == option_settings["languje"]:
@@ -1758,21 +1873,48 @@ while RUN:
             if i.type == pygame.KEYDOWN:
                 pass
             if i.type == pygame.MOUSEBUTTONDOWN:
-                BUTTON = seting_gui.button_mous(scale.mous_get())
-
                 if i.button == 1:
                     if BUTTON == 1:
-                        menu = original_scen
+                        menu = original_menu
 
                     if 2 <= BUTTON <= 3:
                         option_settings["languje"] = lang[BUTTON]
-                        True_Save.geting_staf("languge", lang[BUTTON])
+                        True_Save.update_stuff("languge", lang[BUTTON])
 
-
+                    if BUTTON == 4:
+                        option_settings["music_voluom"] = math.floor((scale.mous_get()[0] - 75) / (537/100))
+                        sistem_seting.start_music(sistem_seting.sound)
 
             if i.type == pygame.QUIT:
                 RUN = False
 
+    elif menu == 6:
+        sc_main.blit(tesxture_blok["soul_sect"], (0, 0))
+
+        sc_main.blit(pygame.transform.scale(meta_progress["open soul"][setting["soul vibor"]].png, (218, 218)), (90, 128))
+
+        for i in pygame.event.get():
+            if i.type == pygame.KEYDOWN:
+                pass
+            if i.type == pygame.MOUSEBUTTONDOWN:
+                BUTTON = soul_select_gui.button_mous(scale.mous_get())
+
+                if i.button == 1:
+                    if BUTTON == 1:
+                        menu = 2
+                    if BUTTON == 2:
+                        playr_now.soul = meta_progress["open soul"][setting["soul vibor"]]
+                        menu = 1
+                    if BUTTON == 3:
+                        if len(meta_progress["open soul"])-1 == setting["soul vibor"]:
+                            setting["soul vibor"] = 0
+                        else:
+                            setting["soul vibor"] += 1
+                    if BUTTON == 4:
+                        pass
+
+            if i.type == pygame.QUIT:
+                RUN = False
 
 
 
