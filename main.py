@@ -1165,23 +1165,24 @@ class World:
                         what_take = run.type.split("_")
                         what_take[1] = int(what_take[1])
                         what_take[2] = int(what_take[2])
+                        what_take[0] = random.choices(run.slot[0], weights=run.slot[1], k=1)[0]
                         if playr_now.artefact[0].leval >= what_take[1]:
                             playr_now.artefact[0].leval -= what_take[1]
                             if what_take[2]%2:
-                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[2]))
+                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[0]))
                             else:
-                                self.add_artifact(Cards.load_card_from_data_base(what_take[2]))
+                                self.add_artifact(Cards.load_card_from_data_base(what_take[0]))
 
                     elif "predati_" in run.type:
                         what_take = run.type.split("_")
                         what_take[1] = int(what_take[1])
-                        what_take[2] = int(what_take[2])
+                        what_take[3] = random.choices(run.slot[0], weights=run.slot[1], k=1)[0]
                         if playr_now.hp >= what_take[1]:
                             playr_now.hp -= what_take[1]
                             if what_take[2]%2:
-                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[2], True))
+                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[0]))
                             else:
-                                self.add_artifact(Cards.load_card_from_data_base(what_take[2], True))
+                                self.add_artifact(Cards.load_card_from_data_base(what_take[0]))
 
                     elif "tp_" in run.type:
                         what_take = run.type.split("_")
@@ -1294,8 +1295,13 @@ class Act:
                 cursor.execute("""SELECT id FROM ACT WHERE id = ?""", (str(search),))
 
             for res in cursor:
-                return Act(True_Save.load_translate_from_data_base(res[1]),
-                           res[2])
+                return_staf = Act(True_Save.load_translate_from_data_base(res[1]),res[2])
+
+            if return_staf.type.split("_")[0] in ["trade", "predati"]:
+                return_staf.slot = True_Save.load_chans(return_staf.type.split("_")[1])
+
+            return return_staf
+
 
 class line:
     def __init__(self, color1, color2, coordinate):
