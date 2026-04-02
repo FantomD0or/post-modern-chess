@@ -6,6 +6,8 @@ import ast
 import tkinter
 import os
 
+
+
 pygame.init()
 
 ekran = [1200, 900]
@@ -70,6 +72,7 @@ class Sistem:
     def base_seting(self):
         return {
             "cards_now": 0,
+            "artifact_page_now": 0,
             "choss_what": False,
             "scrool_opisanie": 0,
             "scrool_chat": 0,
@@ -334,7 +337,7 @@ class Save:
     def reload(self):
 
         tesxture_blok.update({
-            "fon": True_Save.foto_load("fon.png"),
+            "fon": True_Save.foto_load("fon - Copy.png"),
             "no_end_fon": True_Save.foto_load("fon_kill.png"),
             "hp": [True_Save.foto_load("hp1.png"),
                    True_Save.foto_load("hp2.png")],
@@ -636,7 +639,7 @@ class Cards:
 
         if self.type == "spawn_arrow_left":
             if where.exsit_to_space(playr_now.x%where.RAZMER, playr_now.y%where.RAZMER):
-                where.local_World[playr_now.x%where.RAZMER][playr_now.y%where.RAZMER] = Objet.load_obj_from_data_base(10)
+                where.local_World[playr_now.x%where.RAZMER][(playr_now.y+1)%where.RAZMER] = Objet.load_obj_from_data_base(10)
 
         if self.type == "tp":
             playr_now.y += random.randint(0, where.RAZMER-1) - math.floor(where.RAZMER/2)
@@ -779,8 +782,32 @@ class IMenu:
                     pygame.draw.circle(sc_main, (255, 255, 255), (cx, cy), r)
                 if (m_x - cx) ** 2 + (m_y - cy) ** 2 <= r ** 2:
                     return i + 1
-
         return False
+
+    def sub_select(self, index, mous, colvo):
+        # index - это i+1 из button_mous, значит вычитаем 1
+        element = self.gui[index - 1]
+
+        # Проверяем, что это прямоугольник
+        if len(element) != 4:
+            return None
+
+        x1, y1, x2, y2 = element
+        m_x, m_y = mous
+
+        # Считаем размеры ячейки
+        cell_w = (x2 - x1) / colvo[0]
+        cell_h = (y2 - y1) / colvo[1]
+
+        # Рассчитываем относительные координаты
+        sub_x = math.floor((m_x - x1) / cell_w)
+        sub_y = math.floor((m_y - y1) / cell_h)
+
+        # Ограничиваем значения, чтобы не выйти за пределы colvo
+        sub_x = max(0, min(sub_x, colvo[0] - 1))
+        sub_y = max(0, min(sub_y, colvo[1] - 1))
+
+        return [sub_x, sub_y]
 
 class World:
     def __init__(self, seed, we_now):
@@ -836,15 +863,18 @@ class World:
         self.texst_dialog()
         self.hp_render()
 
-        sc_main.blit(pygame.transform.scale(holst, (400 + setting["map"][2], 400 + setting["map"][2])),
-                     (400 + setting["map"][0], 200 + setting["map"][1]))
-
         if setting["figur on mous"]:
             sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)), (scale.mous_get()))
         else:
-            sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)),
-                         (400 + playr_now.x % self.RAZMER * 50 * size,
-                          200 + playr_now.y % self.RAZMER * 50 * size))
+            holst.blit(pygame.transform.scale(playr_now.soul.png, (50, 50)),
+                         (playr_now.x % self.RAZMER * 50,
+                          playr_now.y % self.RAZMER * 50))
+
+        sc_main.blit(pygame.transform.scale(holst, (igra_gui.gui[7][2] - igra_gui.gui[7][0] + setting["map"][2],
+                                                    igra_gui.gui[7][3] - igra_gui.gui[7][1] + setting["map"][2])),
+                     (igra_gui.gui[7][0] + setting["map"][0], igra_gui.gui[7][1] + setting["map"][1]))
+
+
 
     def jod(self, where):
         size = 8 / self.RAZMER
@@ -863,42 +893,50 @@ class World:
 
     def hp_render(self):
         for i in range(playr_now.hp):
-            sc_main.blit(pygame.transform.scale(tesxture_blok["hp"][math.floor(i/10)], (28, 28)),
-                         (690 + i%10 * 28, 15))
+            sc_main.blit(pygame.transform.scale(tesxture_blok["hp"][math.floor(i/10)], (32, 36)),
+                         (403 + i%10 * 38, 60))
 
     def other_staf(self):
         size = 8 / self.RAZMER
 
         sc_main.blit(nots.render(str(playr_now.y * -1) + " - " + one_to_ABC(int(math.fabs(playr_now.x + 1))), True,
-                                 (255, 255, 255)), (0, 0))
-        sc_main.blit(pygame.transform.scale(playr_now.soul.png, (182, 217)), (190, 40))
+                                 (255, 255, 255)), (522, 11))
+        sc_main.blit(pygame.transform.scale(playr_now.soul.png, (73, 73)), (17, 11))
 
-        sc_main.blit(playr_now.soul.gid, (336,663))
+        #sc_main.blit(playr_now.soul.gid, (336,663))
 
         if self.up_leval[self.RAZMER+1] - playr_now.y < 0:
             sc_main.blit(nots.render(str((self.up_leval[self.RAZMER+1] - playr_now.y) * -1),
-                                     True, (255, 0, 0)), (47, 650))
+                                     True, (255, 0, 0)), (105, 50))
         else:
             sc_main.blit(nots.render(str((self.up_leval[self.RAZMER+1] - playr_now.y) * -1),
-                                     True, (0, 255, 0)), (47, 650))
+                                     True, (0, 255, 0)), (105, 50))
 
         for i in range(len(playr_now.all_kill)):
             sc_main.blit(pygame.transform.scale(playr_now.all_kill[i].foto, (50, 50)),
-                         (912 + i*50, 847))
+                         (10 + i*50, 828))
 
-        if setting["cards_now"] - 1 >= 0:
-            sc_main.blit(pygame.transform.scale(playr_now.cards[setting["cards_now"] - 1].foto, (40, 64)),
-                         (60, 800))
-        if playr_now.cards != []:
-            sc_main.blit(pygame.transform.scale(playr_now.cards[setting["cards_now"]].foto, (70, 100)),
-                         (115, 785))
+
+        if setting["cards_now"] + 3 < len(playr_now.cards):
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"] + 3].foto, (140, 200)), 330),
+                         (998, 578))
+        if setting["cards_now"] + 2 < len(playr_now.cards):
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"] + 2].foto, (140, 200)), 345),
+                (997, 574))
         if setting["cards_now"] + 1 < len(playr_now.cards):
-            sc_main.blit(pygame.transform.scale(playr_now.cards[setting["cards_now"] + 1].foto, (40, 64)),
-                         (200, 800))
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"] + 1].foto, (140, 200)), 0),
+                (979, 595))
+        if playr_now.cards != []:
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"]].foto, (140, 200)), 15),
+                (941, 583))
 
         for i in range(len(playr_now.artefact)):
             sc_main.blit(pygame.transform.scale(playr_now.artefact[i].foto, (40, 40)),
-                         (960 + i%6 * 40, 229 + math.floor(i/6)*40))
+                         (igra_gui.gui[12][0] + 40*i, igra_gui.gui[12][1]))
 
     def texst_inf(self):
         if setting["choss_what"] or type(setting["item"]) == int:
@@ -931,7 +969,7 @@ class World:
                     writing_text.append(line)
             r = 0
             for i in writing_text[setting["scrool_opisanie"]:setting["scrool_opisanie"] + 8]:
-                sc_main.blit(mini_nots.render(i, True, (0, 0, 0)), (670 - r * 5, 680 + r * 25))
+                sc_main.blit(mini_nots.render(i, True, (255, 255, 255)), (igra_gui.gui[6][0], igra_gui.gui[6][1] + r * 25))
                 r += 1
 
     def texst_dialog(self):
@@ -978,16 +1016,15 @@ class World:
                                 for c in writing_text[scrool:scrool + 8]:
                                     sc_main.blit(mini_nots.render(c, True, (255, 255, 255)),
                                                                                     (igra_gui.gui[8 + i][0]+20,
-                                                                                         igra_gui.gui[8 + i][1]+20 + r*20))
+                                                                                         igra_gui.gui[8 + i][1]+60 + r*20))
                                     r += 1
 
     def choss_render(self):
         if setting["choss_what"] == "cards":
-            pygame.draw.rect(sc_main, (255, 255, 0), (112, 782, 76, 106), 3)
+            pygame.draw.lines(sc_main, (255, 255, 0), True,
+                              [[943, 615], [1075, 584], [1121, 773], [989, 808]], 3)
         if type(setting["item"]) == int:
-            pygame.draw.rect(sc_main, (255, 255, 0), (960 + setting["item"] % 6 * 40 - 3,
-                                                      229 + math.floor(setting["item"] / 6) * 40 - 3,
-                                                      40 + 3, 40 + 3), 3)
+            pygame.draw.rect(sc_main, (255, 255, 0), (setting["item"]%10*40 + igra_gui.gui[12][0], igra_gui.gui[12][1], 40, 40), 3)
 
     def room_generate(self, x, y):
 
@@ -1298,7 +1335,7 @@ class Act:
                 return_staf = Act(True_Save.load_translate_from_data_base(res[1]),res[2])
 
             if return_staf.type.split("_")[0] in ["trade", "predati"]:
-                return_staf.slot = True_Save.load_chans(return_staf.type.split("_")[1])
+                return_staf.slot = True_Save.load_chans(return_staf.type.split("_")[2])
 
             return return_staf
 
@@ -1451,6 +1488,9 @@ def start_locashon():
     zith.local_World[5][7] = Objet.load_obj_from_data_base(42)
 
     playr_now.cards.append(Cards.load_card_from_data_base(3))
+    playr_now.cards.append(Cards.load_card_from_data_base(3))
+    playr_now.cards.append(Cards.load_card_from_data_base(3))
+    playr_now.cards.append(Cards.load_card_from_data_base(3))
     playr_now.artefact.append(Cards.load_card_from_data_base(4))
 
 def comand(com):
@@ -1478,19 +1518,19 @@ start_locashon()
 
 
 igra_gui = IMenu([
-    [36, 570, 145, 679], #начать моргание глазом
-    [161, 570, 270, 679], #прекратить моргание глазом
-    [252, 808, 295, 850], #стрелка на право в картах
-    [5, 808, 48, 850], #стрелка на лево в картах
-    [970, 720, 1189, 778], #ACT
-    [115, 785, 186, 885], #карта
-    [612, 646, 895, 900], #текст описания
-    [400, 200, 800, 600], #доска
+    [100, 8, 181, 86], #начать моргание глазом
+    [188, 8, 269, 86], #прекратить моргание глазом
+    [],
+    [],
+    [728, 803, 1009, 897], #ACT
+    [955, 600, 1100, 978], #карта
+    [965, 116, 1189, 557], #текст описания
+    [266, 109, 933, 786], #доска
     [19, 56, 170, 250], #диолог
-    [7, 293, 134, 512], #нопка диалага 1
-    [134, 293, 269, 512], #кнопка дилога 2
-    [269, 293, 383, 512], #кнопка дилога 3
-    [960, 229, 1199, 708], #артевакты
+    [14, 336, 241, 501], #нопка диалага 1
+    [14, 504, 241, 662], #кнопка дилога 2
+    [14, 667, 241, 771], #кнопка дилога 3
+    [313, 857, 712, 896], #артевакты
     [1146, 1, 1198, 53], #сохронение
     [1083, 4, 1137, 56] #настройки
                  ])
@@ -1661,26 +1701,16 @@ while RUN:
                     elif BUTTON == 2:
                         print("нельзя")
 
-                    elif BUTTON == 3: #стрелка на право в картах
-                        if setting["cards_now"] + 1 < len(playr_now.cards):
-                            setting["cards_now"] += 1
-
-                    elif BUTTON == 4: #стрелка на лево в картах
-                        if setting["cards_now"] - 1 >= 0:
-                            setting["cards_now"] -= 1
-
                     elif BUTTON == 6: #выбираем карту
                         setting["choss_what"] = "cards"
 
                     elif BUTTON == 8: #игровое поле
-                        setting["choss_what"] = [math.floor((scale.mous_get()[0] - 400) / (50 * (8 / zith.RAZMER))),
-                                                 math.floor((scale.mous_get()[1] - 200) / (50 * (8/zith.RAZMER)))]
+                        setting["choss_what"] = igra_gui.sub_select(BUTTON, scale.mous_get(), [zith.RAZMER]*2)
                         if setting["choss_what"] == [playr_now.x % zith.RAZMER, playr_now.y % zith.RAZMER]:
                             setting["figur on mous"] = True
 
                     elif BUTTON == 13:
-                        setting["item"] = [math.floor((scale.mous_get()[0] - 960) / 40), math.floor((scale.mous_get()[1] - 229) / 40)]
-                        setting["item"] = setting["item"][0] + setting["item"][1] * 6
+                        setting["item"] = igra_gui.sub_select(BUTTON, scale.mous_get(), [10, 1])[0]
                         if setting["item"] > len(playr_now.artefact)-1:
                             setting["item"] = False
 
@@ -1693,17 +1723,24 @@ while RUN:
 
                 if i.button == 5: # Колесико вверх
                     if BUTTON == 7:
-
                         setting["scrool_opisanie"] += 1
 
-                    if BUTTON == 9:
-
+                    elif BUTTON == 9:
                         setting["dialog"] += 1
 
-                    if 10 <= BUTTON <= 13:
+                    elif BUTTON == 6:
+                        if setting["cards_now"] - 1 > 0:
+                            setting["cards_now"] -= 1
+
+                    elif 10 <= BUTTON <= 13:
                         setting["scrool_chat"] += 1
 
+
                 if i.button == 4: # Колесико вниз
+                    if BUTTON == 6:
+                        if setting["cards_now"] + 1 < len(playr_now.cards):
+                            setting["cards_now"] += 1
+
                     if BUTTON == 7:
                         if setting["scrool_opisanie"]:
                             setting["scrool_opisanie"] -= 1
