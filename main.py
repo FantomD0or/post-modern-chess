@@ -6,6 +6,8 @@ import ast
 import tkinter
 import os
 
+
+
 pygame.init()
 
 ekran = [1200, 900]
@@ -15,7 +17,7 @@ sc_main = pygame.Surface(ekran)
 FPS = 60
 clock = pygame.time.Clock()
 RUN = True
-
+doble_click_chek = 0
 
 def smart_int(a):
     if "-" in a:
@@ -70,6 +72,7 @@ class Sistem:
     def base_seting(self):
         return {
             "cards_now": 0,
+            "artifact_page_now": 0,
             "choss_what": False,
             "scrool_opisanie": 0,
             "scrool_chat": 0,
@@ -176,12 +179,11 @@ setting = {
 
 
 
-
 class Scale:
     def __init__(self, _real_screen, _ekran):
         self.scale_up = _ekran[0]
         self.scale_right = _ekran[1]
-    
+
     def mous_get(self):
         up, right = pygame.mouse.get_pos()
         up = up * (ekran[0] / sc_real.get_width())
@@ -190,6 +192,26 @@ class Scale:
         right = math.floor(right)
         return up, right
 
+class Foto:
+    def __init__(self, _pic, _tip):
+        self.pic = _pic
+        self.tips = _tip
+
+    def blid(self, were, rec):
+        rec_now = rec
+
+        if "shift" in self.tips:
+            rec_now[0] += self.tips["shift"][0]
+            rec_now[1] += self.tips["shift"][1]
+
+        if "mp" in self.tips:
+            if 0 < self.tips["mp"][3]:
+                rec_now[0] += (self.tips["mp"][0] - rec_now[0]) / self.tips["mp"][2] * self.tips["mp"][3]
+                rec_now[1] += (self.tips["mp"][1] - rec_now[1]) / self.tips["mp"][2] * self.tips["mp"][3]
+                self.tips["mp"][3] -= 1/FPS
+            else:
+                del self.tips["mp"]
+        were.blit(self.pic, rec_now)
 
 root = tkinter.Tk()
 root.withdraw() # Скрываем главное окно Tkinter
@@ -210,10 +232,6 @@ pygame.display.set_caption("пост модерн шахматы")
 pygame.display.set_icon(pygame.image.load("png_like/logo-Photoroom.png"))
 
 
-
-
-
-
 class Save:
     def __init__(self):
         self.base = option_settings["all_png"]
@@ -231,7 +249,7 @@ class Save:
                 print("файл не найде в кастомной базе данных")
                 return a
             except:
-                print("файл не найде в базе данных")
+                print("файл не найде в базе данных: " + z)
                 return pygame.image.load("png_like/debag.png")
 
     def all_pak_texsture(self):
@@ -291,7 +309,7 @@ class Save:
             cursor = data.cursor()
 
             cursor.execute("DELETE FROM save")
-            
+
             a = [
                 [we_save.x, "x"],
                 [we_save.y, "y"],
@@ -303,7 +321,7 @@ class Save:
 
                 enter = "INSERT INTO save (id,type,more_inf,more_more_inf) VALUES (" + str(
                     i) + """, 'player_info', '""" + str(a[j][1]) + "', '" + str(a[j][0]) + "')"
-                
+
                 i += 1
 
                 cursor.execute(enter)
@@ -334,11 +352,13 @@ class Save:
     def reload(self):
 
         tesxture_blok.update({
-            "fon": True_Save.foto_load("fon.png"),
+            "fon": True_Save.foto_load("fon - Copy.png"),
             "no_end_fon": True_Save.foto_load("fon_kill.png"),
             "hp": [True_Save.foto_load("hp1.png"),
                    True_Save.foto_load("hp2.png")],
             "reset": True_Save.foto_load("vibor.png"),
+            "nothing": True_Save.foto_load("ничего.png"),
+            "unlock": True_Save.foto_load("unknow.png")
             })
 
     def pre_load(self):
@@ -352,9 +372,6 @@ class Save:
                 _settings[res[0]] = smart_int(res[1])
 
         return _settings
-
-
-
 
     def load_translate_from_data_base(self, what):
         data = sqlite3.connect('data base/all vrag.db')
@@ -380,7 +397,10 @@ class Save:
             now = 0
 
             for res in cursor:
-                now = ast.literal_eval(res[1])
+                a = res[1].split("\n")
+                a[0] = ast.literal_eval(a[0])
+                a[1] = ast.literal_eval(a[1])
+                now = a
             return now
 
     def update_stuff(self, what, to):
@@ -395,9 +415,89 @@ class Save:
 
             data.commit()
 
+class Achievement:
+    def __init__(self):
+        self.kolvo_bink = 0
+    def Load_Achievement_from_data_base(self):
+        data = sqlite3.connect('data base/all vrag.db')
+
+        cursor = data.cursor()
+
+        enter = cursor.execute("SELECT * FROM achivments WHERE id = " + str(self))
+
+        for res in enter:
+            now = res
+
+        sas = Achievement()
+
+        sas.id = now[0]
+        sas.name = now[1]
+        sas.opisanie = now[2]
+        sas.foto = True_Save.foto_load(now[3])
+
+        return sas
+
+    def all_achivment(self):
+
+        data = sqlite3.connect('data base/all vrag.db')
+
+        now = 0
+        cursor = data.cursor()
+        long = cursor.execute("SELECT MAX(id) FROM achivments")
+
+        for res in long:
+            long = res[0]
+
+        sas = []
+
+        for i in range(int(long) + 1):
+            sas.append(Achievement.Load_Achievement_from_data_base(i))
+
+        return sas
+
+    def get_all_achivment(self):
+        datka = sqlite3.connect('data base/save_file.db')
+
+        cursor = datka.cursor()
+        cursor.execute("""SELECT haw FROM metaprogress WHERE id = 2""")
+        for res in cursor:
+            for_time = res[0]
+
+        for_time = for_time.split(",")
+
+        return for_time
+
+    def unlock_achivment(self, what):
+        with sqlite3.connect('data base/save_file.db') as datka:
+            cursor = datka.cursor()
+            cursor.execute("SELECT haw FROM metaprogress WHERE id = 2")
+            res = cursor.fetchone()
+
+            if res:
+                for_time = res[0]
+                updated_haw = f"{for_time},{what}"
+                cursor.execute("UPDATE metaprogress SET haw = ? WHERE id = 2", (updated_haw,))
+                datka.commit()
+        meta_progress["achivment"] = Achievement.get_all_achivment(None)
+
+
+    def meta_achiv(self, what_kind):
+        if what_kind in meta_progress["all_ach"]:
+            pass
+        else:
+            if what_kind == 2:
+                achiv_test[0] += 1
+                if achiv_test[0] >= 20:
+                    Achievement.unlock_achivment(None, 2)
+            else:
+                Achievement.unlock_achivment(None, what_kind)
+
+
 True_Save = Save()
 
 playr_now = True_Save.start_seting()
+
+achiv_test = [0]
 
 sistem_seting = Sistem([], 0, [0, 0], False)
 
@@ -406,7 +506,9 @@ all_gif = {
 }
 
 meta_progress = {
-    "open soul": Soul_class.get_all_soul()
+    "open soul": Soul_class.get_all_soul(),
+    "achivment": Achievement.get_all_achivment(None),
+    "all_ach": Achievement.all_achivment(None)
 }
 
 tesxture_blok = {
@@ -417,7 +519,8 @@ tesxture_blok = {
     "reset": True_Save.foto_load("vibor.png"),
     "seting": True_Save.foto_load("seting.png"),
     "soul_sect": True_Save.foto_load("soul_select.png"),
-    "nothing": True_Save.foto_load("")
+    "nothing": True_Save.foto_load("ничего.png"),
+    "dont_unlock": True_Save.foto_load("achivment/dont_unlock.png")
 }
 
 True_Save.reload()
@@ -459,6 +562,7 @@ class Gif:
         else:
             return self.list[len(self.list) -1]
 
+
 class Objet:
     def __init__(self, foto, more_inf, name, ai, _type):
         self.foto = foto
@@ -470,22 +574,18 @@ class Objet:
     def load_obj_from_data_base(search):
         with sqlite3.connect('data base/all vrag.db') as data:
             cursor = data.cursor()
-            if type(search) == int:
-                cursor.execute("""SELECT * FROM obj_inf WHERE id = ?""", (search,))
-            else:
-                cursor.execute("""SELECT id FROM obj_inf WHERE id = ?""", (str(search),))
-
+            cursor.execute("""SELECT * FROM obj_inf WHERE id = ?""", (search,))
             for res in cursor:
-                return_ing = Objet(True_Save.foto_load(res[2]), {
+                return_ing = Objet(Foto(True_Save.foto_load(res[2]),{}), {
                             "destrakt": int(res[5]),
                             "kill": int(res[6]),
                             "trans": truE(res[7]),
                             "dialog": truE(res[8]),
-                            },
+                            "id": search},
                             True_Save.load_translate_from_data_base(res[3]),
                             truE(res[4]),
-                            truE(res[1])
-                                   )
+                            truE(res[1]))
+
 
 
 
@@ -497,33 +597,38 @@ class Objet:
                 else:
                     ai_set["use"] = False
 
+                if "vipod_" in return_ing.ai:
+                    return_ing.more_inf["use_ever"] = int(return_ing.ai.split("_")[1])
+
                 ai_set["type"] = return_ing.ai
 
                 return_ing.ai = ai_set
             else:
                 return_ing.ai = {}
 
-            if True:
+            if "_" in return_ing.type:
                 if "sunduk_" in return_ing.type or "seller_" in return_ing.type:
                     return_ing.more_inf["chans"] = True_Save.load_chans(return_ing.type.split("_")[1])
                     return_ing.type = return_ing.type.split("_")[0]
 
+
             if return_ing.more_inf["dialog"]:
                 return_ing.more_inf["dialog"] = Dialog.load_dialog_from_data_base(return_ing.more_inf["dialog"])
-            if not return_ing.more_inf["trans"]:
-                return_ing.foto = pygame.transform.scale(return_ing.foto, (50, 50))
+            if return_ing.more_inf["trans"]:
+                return_ing.foto.tips = {"shift": [25 - (return_ing.foto.pic.get_size()[0] / 2), 25 - (return_ing.foto.pic.get_size()[1] / 2)]}
+            else:
+                return_ing.foto.pic = pygame.transform.scale(return_ing.foto.pic, (50, 50))
             return return_ing
 
     def ai_chet(self, were, x, y):
+        go_to_ = {"up": [0, -1], "down": [0, 1], "left": [-1, 0], "right": [1, 0],
+                  "dont": [0, 0],
+                  "UR": [1, -1], "UL": [-1, -1], "DR": [1, 1], "DL": [-1, 1]}
 
-
-        go_to_ = {"up": [0, -1],
-                  "down": [0, 1],
-                  "left": [-1, 0],
-                  "right": [1, 0]}
         player_x_y = playr_now.x%were.RAZMER, playr_now.y%were.RAZMER
 
         self.ai["use"] = True
+
         if self.ai["type"] == "random":
             new_x_y = random.randint(0, 2) - 1, random.randint(0, 2) - 1
             i = 10
@@ -532,8 +637,22 @@ class Objet:
                     if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
                         if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
                             were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
+                            were.local_World[x + new_x_y[0]][y + new_x_y[1]].foto.tips["mp"] = [x * 50, y * 50, 0.1, 0.1]
                             were.local_World[x][y] = False
                             i = 1
+                new_x_y = random.randint(0, 1) * 2 - 1, random.randint(0, 1) * 2 - 1
+                i -= 1
+
+        elif self.ai["type"] == "random+":
+            new_x_y = random.randint(0, 2) - 1, random.randint(0, 2) - 1
+            i = 10
+            while i:
+                if not (new_x_y[0] == 0 and new_x_y[1] == 0):
+                    if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
+                        were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
+                        were.local_World[x + new_x_y[0]][y + new_x_y[1]].foto.tips["mp"] = [x * 50, y * 50, 0.1, 0.1]
+                        were.local_World[x][y] = False
+                        i = 1
                 new_x_y = random.randint(0, 1) * 2 - 1, random.randint(0, 1) * 2 - 1
                 i -= 1
 
@@ -544,9 +663,13 @@ class Objet:
             vectore[1] = math.floor(go_to_[com[1]][1] * int(com[2]))
             if were.exsit_to_space(x + vectore[0], y + vectore[1]):
                 were.local_World[x + vectore[0]][y + vectore[1]] = were.local_World[x][y]
-                were.local_World[x][y] = False
-            else:
-                were.local_World[x][y] = False
+                were.local_World[x + vectore[0]][y + vectore[1]].foto.tips["mp"] = [x * 50, y * 50, 0.1, 0.1]
+            were.local_World[x][y] = False
+            if self.type == "big":
+                if were.exsit_to_space(x + vectore[0], y + vectore[1]-1): were.local_World[x + vectore[0]][
+                    y + vectore[1] - 1] = False
+                if were.exsit_to_space(x + vectore[0], y + vectore[1]+1): were.local_World[x + vectore[0]][
+                    y + vectore[1] + 1] = False
 
         elif "goplayer" in self.ai["type"]:
             new_x_y = [0, 0]
@@ -561,6 +684,7 @@ class Objet:
             if were.exsit_to_space(x + new_x_y[0], y + new_x_y[1]):
                 if not were.local_World[x + new_x_y[0]][y + new_x_y[1]]:
                     were.local_World[x + new_x_y[0]][y + new_x_y[1]] = were.local_World[x][y]
+                    were.local_World[x + new_x_y[0]][y + new_x_y[1]].foto.tips["mp"] = [x * 50, y * 50, 0.1, 0.1]
                     if new_x_y[0] or new_x_y[1]:
                         were.local_World[x][y] = False
 
@@ -579,7 +703,60 @@ class Objet:
 
             if were.exsit_to_space(step_x + ex, step_y + ey):
                 were.local_World[ex + step_x][ey + step_y] = self
+                were.local_World[ex + step_x][ey + step_y].foto.tips["mp"] = [ex * 50, ey * 50, 0.1, 0.1]
                 were.local_World[x][y] = False
+
+        elif "pushka_" in self.ai["type"]:
+            if not self.more_inf["wait"]:
+                self.more_inf["wait"] = 2
+                a = go_to_[self.more_inf["rotaet"]]
+                if were.exsit_to_space(x + a[0], y + a[1]):
+                    were.local_World[x + a[0]][y + a[1]] = Objet.load_obj_from_data_base(int(self.ai["type"].split("_")[1]))
+            else:
+                self.more_inf["wait"] -= 1
+
+        elif "podstic" in self.ai["type"]:
+            dy = 1 if "!!!" in self.ai["type"] else -1
+            if player_x_y in [(x + 1, y + dy), (x - 1, y + dy)]:
+                dx = 2 if player_x_y[0] > x else -2
+                were.local_World[x][y] = False
+                playr_now.uron(1)
+                if were.exsit_to_space(x + dx, y + 2 * dy): were.local_World[x + dx][y + 2 * dy] = self
+
+        elif "transform_" in self.ai["type"]:
+            com = self.ai["type"].split("_")
+            com = int(com[1])
+            for ex in range(-1, 2):
+                for ey in range(-1, 2):
+                    if were.exsit_to_space(x + ex, y + ey):
+                        if were.local_World[ex + x][ey + y] and (ex != 0 or ey != 0):
+                            new_obj = Objet.load_obj_from_data_base(com)
+                            were.local_World[ex + x][ey + y] = new_obj
+
+        elif "vipod_" in self.ai["type"]:
+            if self.more_inf["use_ever"]:
+                nx = player_x_y[0] - x
+                ny = player_x_y[1] - y
+                if -1 <= nx <= 1 and -1 <= ny <= 1:
+                    self.more_inf["use_ever"] -= 1
+                    were.local_World[x + nx][y + ny] = were.local_World[x][y]
+                    were.local_World[x + nx][y + ny].foto.tips["mp"] = [x * 50, y * 50, 0.1, 0.1]
+                    were.local_World[x][y] = False
+
+        elif "SpawnerCircle_" in self.ai["type"]:
+            if sistem_seting.time_geam%2:
+                a = ("UL", "up", "UR", "left", "", "right", "DL", "down", "DR")
+                com = self.ai["type"].split("_")
+                com = int(com[1])
+                for ex in range(-1, 2):
+                    for ey in range(-1, 2):
+                        if were.exsit_to_space(x + ex, y + ey):
+                            if (ex, ey) != (0, 0):
+                                new_obj = Objet.load_obj_from_data_base(com)
+                                new_obj.ai["type"] = "move_" + a[(ex+1)+((ey+1)*3)] + "_1"
+                                new_obj.ai["use"] = True
+                                were.local_World[ex + x][ey + y] = new_obj
+
 
 class Cards:
     def __init__(self, foto, name, type, leval, more_inf, id):
@@ -612,43 +789,51 @@ class Cards:
 
             returing = Cards(True_Save.foto_load(res[4]),
                         True_Save.load_translate_from_data_base(res[1]),
-                        res[2],
+                             {},
                         int(res[3]),
                          more_inf,
                          search
                             )
 
             if res[2]:
-                if "_tick_" in returing.type:
-                    more_inf["tick"] = int(returing.type.split("_")[2])
-                    returing.type = returing.type.split("_")[0]
+                stak = res[2].split("!")
+                for i in stak:
+                    j = i.split('_')
+                    if len(j) - 1:
+                        if type(smart_int(j[0])) == int: returing.type[j[0]] = int(j[1])
+                        else: returing.type[j[0]] = j[1]
+                    else:
+                        returing.type[j[0]] = j[0]
 
+                if "tick" in returing.type:
+                    returing.more_inf["tick"] = returing.type["tick"]
 
             return returing
 
     def efect_card(self, where):
-        if self.type == "hp+":
+        if "hp+" in self.type:
             playr_now.hp += self.leval
 
-        if self.type == "move":
+        if "move" in self.type:
             playr_now.y -= self.leval + where.RAZMER
             where.room_generate(playr_now.x, playr_now.y)
 
-        if self.type == "spawn_arrow_left":
+        if "SpawnArrowLeft" in self.type:
             if where.exsit_to_space(playr_now.x%where.RAZMER, playr_now.y%where.RAZMER):
-                where.local_World[playr_now.x%where.RAZMER][playr_now.y%where.RAZMER] = Objet.load_obj_from_data_base(10)
+                where.local_World[playr_now.x%where.RAZMER][(playr_now.y+1)%where.RAZMER] = Objet.load_obj_from_data_base(10)
 
-        if self.type == "tp":
+        if "tp" in self.type:
             playr_now.y += random.randint(0, where.RAZMER-1) - math.floor(where.RAZMER/2)
             playr_now.x += random.randint(0, where.RAZMER-1) - math.floor(where.RAZMER/2)
 
-        if "spial_" in self.type:
-            obj_id = int(self.type.split("_")[1])
+        if "spial" in self.type:
+
+            obj_id = self.type["spial"]
             directions = [
-                (0, -1, "move_up"),
-                (0, 1, "move_down"),
-                (-1, 0, "move_left"),
-                (1, 0, "move_right")
+                (0, -1, "move_up_2"),
+                (0, 1, "move_down_2"),
+                (-1, 0, "move_left_2"),
+                (1, 0, "move_right_2")
             ]
 
             px, py = playr_now.x, playr_now.y
@@ -663,27 +848,58 @@ class Cards:
                     new_obj.ai["use"] = True
                     where.local_World[nx][ny] = new_obj
 
-        if "dropplayre_" in self.type:
-            obj_id = int(self.type.split("_")[1])
+        if "dropplayre" in self.type:
+            obj_id = self.type["dropplayre"]
             where.local_World[playr_now.x][0] = Objet.load_obj_from_data_base(obj_id)
             where.local_World[playr_now.x][0].ai["type"] = "move_down_1"
             where.local_World[playr_now.x][0].ai["use"] = True
 
+        if "GiveBack" in self.type:
+            if playr_now.all_kill != []:
+                where.local_World[playr_now.x%where.RAZMER][playr_now.y%where.RAZMER] \
+                    = Objet.load_obj_from_data_base(playr_now.all_kill[0].more_inf["id"])
+
+        if "SaveFrom" in self.type:
+            for i in range(-2, 3):
+                for j in range(-2, 3):
+                    if where.local_World[(playr_now.x + i) % where.RAZMER][(playr_now.y + j) % where.RAZMER]:
+                        if where.local_World[(playr_now.x + i) % where.RAZMER][(playr_now.y + j) % where.RAZMER].more_inf["id"] == int(self.type["SaveFrom"]):
+                            where.local_World[(playr_now.x + i) % where.RAZMER][(playr_now.y + j) % where.RAZMER] = False
+
+        if "replace" in self.type:
+            for ex in range(where.RAZMER):
+                for ey in range(where.RAZMER):
+                    if where.local_World[ex][ey]:
+                        if where.local_World[ex][ey].more_inf["id"] == 73:
+                            where.local_World[ex][ey] = Objet.load_obj_from_data_base(59)
+                        elif where.local_World[ex][ey].more_inf["id"] == 59:
+                            where.local_World[ex][ey] = Objet.load_obj_from_data_base(73)
+
         playr_now.cards.pop(setting["cards_now"])
+
+
         if setting["cards_now"]: setting["cards_now"] -= 1
 
 
     def efect_itom(self, where):
+        go_to_ = {"up": [0, -1],
+                  "down": [0, 1],
+                  "left": [-1, 0],
+                  "right": [1, 0],
+                  "dont": [0, 0]}
         for_time = 0
         run = True
+        x, y = playr_now.x%where.RAZMER, playr_now.y%where.RAZMER
+
+
         if "tick" in self.more_inf:
             if self.leval != 0:
                 run = False
             else:
-                self.leval = self.more_inf["tick"]
+                self.leval = int(self.more_inf["tick"])
 
         if run:
-            if self.type == "clear":
+            if "clear" in self.type:
                 for_time = self.leval
                 for i in playr_now.all_kill:
                     self.leval += 1
@@ -693,29 +909,72 @@ class Cards:
                 for_time -= self.leval
 
 
-            if self.type == "cliker":
+            if "cliker" in self.type:
                 self.leval += 1
 
-            if self.type == "MoveLeft":
+            if "MoveLeft" in self.type:
                 playr_now.y -= 1
                 playr_now.x -= 1
 
-            if self.type == "MoveRight":
+            if "MoveRight" in self.type:
                 playr_now.y -= 1
                 playr_now.x += 1
 
-            if self.type == "FirstMove":
+            if "FirstMove" in self.type:
                 if playr_now.y%where.RAZMER == where.RAZMER -2:
                     playr_now.y -= 2
 
-            if self.type == "hp_up":
+            if "hp_up" in self.type:
 
-                if for_time >= self.leval:
+                if playr_now.artefact[0].leval >= self.leval:
                     playr_now.hp += 1
+                    playr_now.artefact[0].leval -= self.leval
 
+            if "spial" in self.type:
+
+                obj_id = self.type["spial"]
+                directions = [
+                    (0, -1, "move_up_2"),
+                    (0, 1, "move_down_2"),
+                    (-1, 0, "move_left_2"),
+                    (1, 0, "move_right_2")
+                ]
+
+                px, py = playr_now.x, playr_now.y
+                size = where.RAZMER
+
+                for dx, dy, ai_command in directions:
+                    nx, ny = (px + dx) % size, (py + dy) % size
+                    if not where.local_World[nx][ny]:
+                        new_obj = Objet.load_obj_from_data_base(obj_id)
+                        new_obj.ai = {}
+                        new_obj.ai["type"] = ai_command
+                        new_obj.ai["use"] = True
+                        where.local_World[nx][ny] = new_obj
+
+            if "kill" in self.type:
+                obj = go_to_[self.type["kill"]]
+                where.local_World[(playr_now.x+obj[0])%where.RAZMER][(playr_now.y+obj[1])%where.RAZMER] = False
+
+            elif "circl" in self.type:
+                # Координаты по часовой стрелке (последний элемент не дублируем, если используем range)
+                here = ((-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0))[::-1]
+
+                # Сохраняем значение первой клетки, которую затрем
+                first_val = where.local_World[here[0][0] + x][here[0][1] + y]
+
+                for i in range(len(here) - 1):
+                    # Текущая клетка получает значение следующей
+
+                    where.local_World[here[i][0] + x][here[i][1] + y] = \
+                        where.local_World[here[i + 1][0] + x][here[i + 1][1] + y]
+
+                # Последняя клетка получает значение, которое мы сохранили в самом начале
+                where.local_World[here[-1][0] + x][here[-1][1] + y] = first_val
 
         else:
             playr_now.artefact[setting["item"]].leval -= 1
+
 
 class Place:
     def __init__(self, name, spawn_pice, cell1, cell2, type, fon, music):
@@ -757,6 +1016,7 @@ class Place:
 
             return now
 
+
 class IMenu:
     def __init__(self, gui):
         self.gui = gui
@@ -779,8 +1039,32 @@ class IMenu:
                     pygame.draw.circle(sc_main, (255, 255, 255), (cx, cy), r)
                 if (m_x - cx) ** 2 + (m_y - cy) ** 2 <= r ** 2:
                     return i + 1
-
         return False
+
+    def sub_select(self, index, mous, colvo):
+        # index - это i+1 из button_mous, значит вычитаем 1
+        element = self.gui[index - 1]
+
+        # Проверяем, что это прямоугольник
+        if len(element) != 4:
+            return None
+
+        x1, y1, x2, y2 = element
+        m_x, m_y = mous
+
+        # Считаем размеры ячейки
+        cell_w = (x2 - x1) / colvo[0]
+        cell_h = (y2 - y1) / colvo[1]
+
+        # Рассчитываем относительные координаты
+        sub_x = math.floor((m_x - x1) / cell_w)
+        sub_y = math.floor((m_y - y1) / cell_h)
+
+        # Ограничиваем значения, чтобы не выйти за пределы colvo
+        sub_x = max(0, min(sub_x, colvo[0] - 1))
+        sub_y = max(0, min(sub_y, colvo[1] - 1))
+
+        return [sub_x, sub_y]
 
 class World:
     def __init__(self, seed, we_now):
@@ -790,10 +1074,10 @@ class World:
         self.we_now = we_now
         self.up_leval = {
                          8: 0,
-                         9: -300,
+                         9: -500,
                          10: -1000,
-                         11: -10000000000
-                         }
+                         11: -1500
+        }
 
     def render(self):
 
@@ -816,10 +1100,9 @@ class World:
             for y in range(self.RAZMER):
                 if mesto[x][y]:
                     if mesto[x][y].more_inf["trans"]:
-                        holst.blit(mesto[x][y].foto, (x * 50 + 25 - (mesto[x][y].foto.get_size()[0] / 2),
-                                    y * 50 + 25 - (mesto[x][y].foto.get_size()[1] / 2)))
+                        mesto[x][y].foto.blid(holst, [x * 50, y * 50])
                     else:
-                        holst.blit(mesto[x][y].foto, (x * 50, y * 50))
+                        mesto[x][y].foto.blid(holst, [x * 50, y * 50])
 
         if type(setting["choss_what"]) == type([]):
             pygame.draw.rect(holst, (255, 255, 0),
@@ -828,23 +1111,22 @@ class World:
                               , 50, 50), 3)
 
         self.jod(holst)
-
-
         self.other_staf()
         self.choss_render()
         self.texst_inf()
         self.texst_dialog()
         self.hp_render()
 
-        sc_main.blit(pygame.transform.scale(holst, (400 + setting["map"][2], 400 + setting["map"][2])),
-                     (400 + setting["map"][0], 200 + setting["map"][1]))
-
         if setting["figur on mous"]:
             sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)), (scale.mous_get()))
         else:
-            sc_main.blit(pygame.transform.scale(playr_now.soul.png, (50 * size, 50 * size)),
-                         (400 + playr_now.x % self.RAZMER * 50 * size,
-                          200 + playr_now.y % self.RAZMER * 50 * size))
+            holst.blit(pygame.transform.scale(playr_now.soul.png, (50, 50)),
+                         (playr_now.x % self.RAZMER * 50,
+                          playr_now.y % self.RAZMER * 50))
+
+        sc_main.blit(pygame.transform.scale(holst, (igra_gui.gui[7][2] - igra_gui.gui[7][0] + setting["map"][2],
+                                                    igra_gui.gui[7][3] - igra_gui.gui[7][1] + setting["map"][2])),
+                     (igra_gui.gui[7][0] + setting["map"][0], igra_gui.gui[7][1] + setting["map"][1]))
 
     def jod(self, where):
         size = 8 / self.RAZMER
@@ -863,42 +1145,50 @@ class World:
 
     def hp_render(self):
         for i in range(playr_now.hp):
-            sc_main.blit(pygame.transform.scale(tesxture_blok["hp"][math.floor(i/10)], (28, 28)),
-                         (690 + i%10 * 28, 15))
+            sc_main.blit(pygame.transform.scale(tesxture_blok["hp"][math.floor(i/10)%len(tesxture_blok["hp"])], (32, 36)),
+                         (403 + i%10 * 38, 60))
 
     def other_staf(self):
         size = 8 / self.RAZMER
 
         sc_main.blit(nots.render(str(playr_now.y * -1) + " - " + one_to_ABC(int(math.fabs(playr_now.x + 1))), True,
-                                 (255, 255, 255)), (0, 0))
-        sc_main.blit(pygame.transform.scale(playr_now.soul.png, (182, 217)), (190, 40))
+                                 (255, 255, 255)), (522, 11))
+        sc_main.blit(pygame.transform.scale(playr_now.soul.png, (73, 73)), (17, 11))
 
-        sc_main.blit(playr_now.soul.gid, (336,663))
+        #sc_main.blit(playr_now.soul.gid, (336,663))
 
         if self.up_leval[self.RAZMER+1] - playr_now.y < 0:
             sc_main.blit(nots.render(str((self.up_leval[self.RAZMER+1] - playr_now.y) * -1),
-                                     True, (255, 0, 0)), (47, 650))
+                                     True, (255, 0, 0)), (105, 50))
         else:
             sc_main.blit(nots.render(str((self.up_leval[self.RAZMER+1] - playr_now.y) * -1),
-                                     True, (0, 255, 0)), (47, 650))
+                                     True, (0, 255, 0)), (105, 50))
 
         for i in range(len(playr_now.all_kill)):
-            sc_main.blit(pygame.transform.scale(playr_now.all_kill[i].foto, (50, 50)),
-                         (912 + i*50, 847))
+            sc_main.blit(pygame.transform.scale(playr_now.all_kill[i].foto.pic, (50, 50)),
+                         (10 + i*50, 828))
 
-        if setting["cards_now"] - 1 >= 0:
-            sc_main.blit(pygame.transform.scale(playr_now.cards[setting["cards_now"] - 1].foto, (40, 64)),
-                         (60, 800))
-        if playr_now.cards != []:
-            sc_main.blit(pygame.transform.scale(playr_now.cards[setting["cards_now"]].foto, (70, 100)),
-                         (115, 785))
+
+        if setting["cards_now"] + 3 < len(playr_now.cards):
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"] + 3].foto, (140, 200)), 330),
+                         (998, 578))
+        if setting["cards_now"] + 2 < len(playr_now.cards):
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"] + 2].foto, (140, 200)), 345),
+                (997, 574))
         if setting["cards_now"] + 1 < len(playr_now.cards):
-            sc_main.blit(pygame.transform.scale(playr_now.cards[setting["cards_now"] + 1].foto, (40, 64)),
-                         (200, 800))
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"] + 1].foto, (140, 200)), 0),
+                (979, 595))
+        if playr_now.cards != []:
+            sc_main.blit(pygame.transform.rotate(
+                pygame.transform.scale(playr_now.cards[setting["cards_now"]].foto, (140, 200)), 15),
+                (941, 583))
 
         for i in range(len(playr_now.artefact)):
             sc_main.blit(pygame.transform.scale(playr_now.artefact[i].foto, (40, 40)),
-                         (960 + i%6 * 40, 229 + math.floor(i/6)*40))
+                         (igra_gui.gui[12][0] + 40*i, igra_gui.gui[12][1]))
 
     def texst_inf(self):
         if setting["choss_what"] or type(setting["item"]) == int:
@@ -931,7 +1221,7 @@ class World:
                     writing_text.append(line)
             r = 0
             for i in writing_text[setting["scrool_opisanie"]:setting["scrool_opisanie"] + 8]:
-                sc_main.blit(mini_nots.render(i, True, (0, 0, 0)), (670 - r * 5, 680 + r * 25))
+                sc_main.blit(mini_nots.render(i, True, (255, 255, 255)), (igra_gui.gui[6][0], igra_gui.gui[6][1] + r * 25))
                 r += 1
 
     def texst_dialog(self):
@@ -978,18 +1268,19 @@ class World:
                                 for c in writing_text[scrool:scrool + 8]:
                                     sc_main.blit(mini_nots.render(c, True, (255, 255, 255)),
                                                                                     (igra_gui.gui[8 + i][0]+20,
-                                                                                         igra_gui.gui[8 + i][1]+20 + r*20))
+                                                                                         igra_gui.gui[8 + i][1]+60 + r*20))
                                     r += 1
 
     def choss_render(self):
         if setting["choss_what"] == "cards":
-            pygame.draw.rect(sc_main, (255, 255, 0), (112, 782, 76, 106), 3)
+            pygame.draw.lines(sc_main, (255, 255, 0), True,
+                              [[943, 615], [1075, 584], [1121, 773], [989, 808]], 3)
         if type(setting["item"]) == int:
-            pygame.draw.rect(sc_main, (255, 255, 0), (960 + setting["item"] % 6 * 40 - 3,
-                                                      229 + math.floor(setting["item"] / 6) * 40 - 3,
-                                                      40 + 3, 40 + 3), 3)
+            pygame.draw.rect(sc_main, (255, 255, 0), (setting["item"]%10*40 + igra_gui.gui[12][0], igra_gui.gui[12][1], 40, 40), 3)
 
     def room_generate(self, x, y):
+
+        go_to_ = ["right", "up", "left", "down"]
 
         nomdore_desk_x = math.floor(x/self.RAZMER)
         nomdore_desk_y = math.floor(y/self.RAZMER)
@@ -1008,37 +1299,41 @@ class World:
                     if placing:
                         if placing.type == "portal":
                             placing.more_inf["teleport"] = random.randint(1, code_input % 10 + 2) * 8
+                        if placing.ai != {} and "pushka" in placing.ai["type"]:
+                            a = random.randint(0, 3)
+                            placing.more_inf["rotaet"] = go_to_[a]
+                            placing.more_inf["wait"] = 1
+                            placing.foto.pic = pygame.transform.rotate(placing.foto.pic, a * 90)
 
-                        elif placing.type == "big":
-                            x_index = math.floor(x_index/2)
-                            y_index = math.floor(y_index/2)
-                            for _x in range(2):
-                                for _y in range(2):
-                                    self.local_World[x_index - _x][y_index - _y] = self.local_World[x_index][y_index]
 
                     self.local_World[x_index][y_index] = placing
 
             if self.we_now.name == "medium":
-                if not random.randint(1, 10) - 1:
+                if not random.randint(0, 10):
                     self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
-                    for _X in range(3):
-                        for _Y in range(3):
-                            self.local_World[0 + _X][2 + _Y] = Objet.load_obj_from_data_base(8)
-                    self.local_World[1][3] = Objet.load_obj_from_data_base(7)
+                    Structor.load_in_game(Structor.load_form_data(2))
 
-                if nomdore_desk_y == math.floor(-250 / self.RAZMER) or nomdore_desk_y+1 == math.floor(-250 / self.RAZMER):
+                if nomdore_desk_y == math.floor(-1050 / self.RAZMER) or nomdore_desk_y+1 == math.floor(-1050 / self.RAZMER):
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(33)
-                if nomdore_desk_y == math.floor(-550 / self.RAZMER) or nomdore_desk_y + 1 == math.floor(-550 / self.RAZMER):
+                if nomdore_desk_y == math.floor(-1400 / self.RAZMER) or nomdore_desk_y + 1 == math.floor(-1400 / self.RAZMER):
                     self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
                     self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(37)
-                if math.floor(-550/ self.RAZMER) > nomdore_desk_y > math.floor(-660/ self.RAZMER):
-                    self.local_World = [[Objet.load_obj_from_data_base(38) for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
-                    self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(37)
+                if math.floor(-1410/ self.RAZMER) > nomdore_desk_y > math.floor(-1750/ self.RAZMER):
+                    self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
+                    Structor.load_in_game(Structor.load_form_data(3))
 
-        if not(sistem_seting.boss[0]) and sistem_seting.boss[1]:
+            if self.we_now.name == "PostStart":
+                if nomdore_desk_y == math.floor(-750 / self.RAZMER) or nomdore_desk_y + 1 == math.floor(-750 / self.RAZMER):
+                    self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
+                    self.local_World[self.RAZMER - 2][self.RAZMER - 2] = Objet.load_obj_from_data_base(76)
+                if math.floor(-760/ self.RAZMER) > nomdore_desk_y > math.floor(-1050/ self.RAZMER):
+                    self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
+                    Structor.load_in_game(Structor.load_form_data(3))
+                    self.local_World[6][6] = Objet.load_obj_from_data_base(76)
+
+
+        if sistem_seting.boss[0] <= 0 and sistem_seting.boss[1]:
             if self.we_now.name == "hell":
-
-
                 playr_now.y -= 300
     def triger(self):
         obj_triger = self.local_World[playr_now.x%self.RAZMER][playr_now.y%self.RAZMER]
@@ -1079,6 +1374,10 @@ class World:
                 if sistem_seting.boss[1]:
                     sistem_seting.boss[0] -= 1
 
+            if obj_triger.type == "swapX":
+                playr_now.x = math.floor(playr_now.x/self.RAZMER) + (self.RAZMER -1 - playr_now.x%self.RAZMER)
+
+
     def canculate_tick(self):
 
         self.supruse()
@@ -1104,7 +1403,7 @@ class World:
 
 
 
-    def exsit_to_space(self, plus_y, plus_x):
+    def exsit_to_space(self, plus_x, plus_y):
         if plus_x < self.RAZMER:
             if plus_x >= 0:
                 if plus_y < self.RAZMER:
@@ -1115,22 +1414,26 @@ class World:
     def smena(self, y):
         smenit = False
         if self.we_now.type == "free":
-            if -250 < y < 8 and self.we_now.name != "start":
+            if 8 > y > -350 and self.we_now.name != "start":
                 self.we_now = Place.load_place_from_data_base(1)
                 smenit = True
 
-            elif -750 < y < -250 and self.we_now.name != "medium":
+            elif -350 > y > -1050 and self.we_now.name != "PostStart":
+                self.we_now = Place.load_place_from_data_base(7)
+                smenit = True
+
+            elif -1050 > y > -1750 and self.we_now.name != "medium":
                 self.we_now = Place.load_place_from_data_base(2)
                 smenit = True
 
-            elif y < -750 and self.we_now.name != "end":
+            elif -1750 > y and self.we_now.name != "end":
                 self.we_now = Place.load_place_from_data_base(6)
                 smenit = True
 
             if smenit:
 
                 sistem_seting.start_music(self.we_now.music)
-                
+
                 if self.we_now.fon:
                     all_gif["profil"] = self.we_now.fon
 
@@ -1165,23 +1468,54 @@ class World:
                         what_take = run.type.split("_")
                         what_take[1] = int(what_take[1])
                         what_take[2] = int(what_take[2])
+                        what_take[0] = random.choices(run.slot[0], weights=run.slot[1], k=1)[0]
                         if playr_now.artefact[0].leval >= what_take[1]:
                             playr_now.artefact[0].leval -= what_take[1]
                             if what_take[2]%2:
-                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[2]))
+                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[0]))
                             else:
-                                self.add_artifact(Cards.load_card_from_data_base(what_take[2]))
+                                self.add_artifact(Cards.load_card_from_data_base(what_take[0]))
 
                     elif "predati_" in run.type:
                         what_take = run.type.split("_")
                         what_take[1] = int(what_take[1])
                         what_take[2] = int(what_take[2])
+                        what_take[3] = random.choices(run.slot[0], weights=run.slot[1], k=1)[0]
                         if playr_now.hp >= what_take[1]:
                             playr_now.hp -= what_take[1]
                             if what_take[2]%2:
-                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[2], True))
+                                playr_now.cards.append(Cards.load_card_from_data_base(what_take[0]))
                             else:
-                                self.add_artifact(Cards.load_card_from_data_base(what_take[2], True))
+                                self.add_artifact(Cards.load_card_from_data_base(what_take[0]))
+
+                    elif "barter_" in run.type:
+                        what_take = run.type.split("_")
+                        what_take[1] = int(what_take[1])
+                        what_take[2] = int(what_take[2])
+                        passet = False
+                        j = 0
+                        if what_take[1]%2:
+                            for i in playr_now.cards:
+                                if run.slot[0].id == i.id:
+                                    passet = True
+                                    break
+                                j += 1
+                        else:
+                            for i in playr_now.artefact:
+                                if run.slot[1].id == i.id:
+                                    passet = True
+                                    break
+                                j += 1
+                        if passet:
+                            if what_take[2] % 2:
+                                playr_now.cards.pop(j)
+                                playr_now.cards.append(run.slot[1])
+                                pass
+                            else:
+                                playr_now.artefact.pop(j)
+                                playr_now.artefact.append(run.slot[1])
+                                pass
+
 
                     elif "tp_" in run.type:
                         what_take = run.type.split("_")
@@ -1189,10 +1523,13 @@ class World:
                         if self.we_now.fon:
                             all_gif["profil"] = self.we_now.fon
                         self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
+                        if what_take[1] == "5":
+                            Structor.load_in_game(Structor.load_form_data(4))
 
                     elif "transform_" in run.type:
                         what_take = run.type.split("_")
                         what_take[1] = int(what_take[1])
+                        Achievement.meta_achiv(None, 2)
                         if what_take[1]:
                             self.local_World[we_see[0]][we_see[1]] = Objet.load_obj_from_data_base(what_take[1])
                         else:
@@ -1202,18 +1539,27 @@ class World:
                         self.local_World[we_see[0]][we_see[1]].more_inf["dialog"] \
                             = Dialog.load_dialog_from_data_base(int(run.type.split("_")[2]))
 
+                    elif "LoadStruckture_" in run.type:
+                        self.local_World = [[False for _ in range(self.RAZMER)] for _ in range(self.RAZMER)]
+                        Structor.load_in_game(Structor.load_form_data(int(run.type.split("_")[1])))
+
     def supruse(self):
         if sistem_seting.boss[1] and (not sistem_seting.boss[0]):
             self.we_now.type = "free"
             if self.we_now.name == "hell":
                 if playr_now.y >= -750:
                     playr_now.y = -750 - self.RAZMER
+            elif self.we_now.name == "vraglend":
+                if playr_now.y >= -1050:
+                    playr_now.y = -1050 - self.RAZMER
+            sistem_seting.boss = [0, 0]
+
         if self.we_now.name == "hell":
             if not sistem_seting.boss[1]:
                  sistem_seting.boss = [15, 15]
                  all_gif["profil"] = Gif("boss", "cycle", 10)
                  sistem_seting.start_music(sounds["boss"])
-                 Scena.scena = Gif("katstsena", "bla", 8)
+                 Scena.scena = Gif("katstsena2", "bla", 8)
 
             if not (sistem_seting.time_geam+10)%10:
                 type_atack = math.floor((sistem_seting.time_geam+10)/10)%6
@@ -1234,23 +1580,84 @@ class World:
                             self.local_World[self.RAZMER-1][i] = Objet.load_obj_from_data_base(34)
                             self.local_World[self.RAZMER-1][i].ai["type"] = "move_left_1"
                             self.local_World[self.RAZMER - 1][i].ai["use"] = True
-                            self.local_World[self.RAZMER-1][i].foto = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][i].foto, 180)
+                            self.local_World[self.RAZMER-1][i].foto.pic = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][i].foto.pic, 180)
                         self.local_World[self.RAZMER - 1][get] = Objet.load_obj_from_data_base(35)
                         self.local_World[self.RAZMER - 1][get].ai["type"] = "move_left_1"
                         self.local_World[self.RAZMER - 1][get].ai["use"] = True
-                        self.local_World[self.RAZMER - 1][get].foto = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][get].foto, 180)
-
+                        self.local_World[self.RAZMER - 1][get].foto.pic = pygame.transform.rotate(self.local_World[self.RAZMER-1 ][get].foto.pic, 180)
+                    pass
                 elif type_atack == 1 or type_atack == 4:
                     for i in range(3):
                         get = random.randint(0, self.RAZMER-1)
                         self.local_World[get][0] = Objet.load_obj_from_data_base(35)
                         self.local_World[get][0].ai["type"] = "move_down_1"
                         self.local_World[get][0].ai["use"] = True
-                        self.local_World[get][0].foto = pygame.transform.rotate(self.local_World[get][0].foto, 270)
+                        self.local_World[get][0].foto.pic = pygame.transform.rotate(self.local_World[get][0].foto.pic, 270)
 
                 elif type_atack == 2 or type_atack == 5:
                     for i in range(4):
                         self.local_World[spawn_base[i][0]][spawn_base[i][1]] = Objet.load_obj_from_data_base(36)
+
+        if self.we_now.name == "vraglend":
+            if not sistem_seting.boss[1]:
+                sistem_seting.boss = [10, 10]
+                Achievement.meta_achiv(None, 6)
+                Scena.scena = Gif("katstsena1", "bla", 8)
+
+            kit = True
+            for i in self.local_World:
+                for j in i:
+                    if j and j.type == "boss":
+                        kit = False
+            if kit:
+                sistem_seting.boss[0] -= 1
+                coordinate = (random.randint(1, self.RAZMER-1), random.randint(1, self.RAZMER-1))
+                self.local_World[coordinate[0]][coordinate[1]] = Objet.load_obj_from_data_base(75)
+
+
+        elif self.we_now.name == "pustina":
+            if not (sistem_seting.time_geam+10)%10:
+                type_atack = math.floor((sistem_seting.time_geam + 10) / 10) % 6
+                if type_atack == 0:
+                    for i in range(10):
+                        self.local_World[random.randint(0, self.RAZMER-1)][random.randint(0, self.RAZMER-1)] = Objet.load_obj_from_data_base(58)
+                elif type_atack == 1:
+                    for i in range(len(self.local_World)):
+                        for j in range(len(self.local_World[i])):
+                            if self.local_World[i][j]:
+                                if not (self.local_World[i][j].type in ("fon", "block", "portal", "button")):
+                                    self.local_World[i][j] = Objet.load_obj_from_data_base(21)
+
+
+class Structor:
+    def load_form_data(self):
+        massiv = []
+        with sqlite3.connect('data base/structore.db') as data:
+            cursor = data.cursor()
+            if type(self) == int:
+                cursor.execute("""SELECT * FROM struckture WHERE id = ? """, (str(self),))
+                now = 0
+                for res in cursor:
+                    a = res[1]
+                a = a.split("\r\n")
+                b = ''
+                for i in a:
+                    b = i.split(',')
+                    for j in range(len(b)):
+                        b[j] = int(b[j])
+                    massiv.append(b)
+        return massiv
+
+    def load_in_game(self):
+        x, y = [0, 0]
+        for i in self:
+            for j in i:
+                if j and zith.exsit_to_space(x, y):
+                    zith.local_World[x][y] = Objet.load_obj_from_data_base(j)
+                x += 1
+            x = 0
+            y += 1
+
 
 class Dialog:
     def __init__(self, text, opthion1, opthion2, opthion3):
@@ -1280,6 +1687,7 @@ class Dialog:
 
             return return_ing
 
+
 class Act:
     def __init__(self, text, type):
         self.text = text
@@ -1294,8 +1702,24 @@ class Act:
                 cursor.execute("""SELECT id FROM ACT WHERE id = ?""", (str(search),))
 
             for res in cursor:
-                return Act(True_Save.load_translate_from_data_base(res[1]),
-                           res[2])
+                return_staf = Act(True_Save.load_translate_from_data_base(res[1]),res[2])
+
+            if return_staf.type.split("_")[0] in ["trade", "predati"]:
+                return_staf.slot = True_Save.load_chans(return_staf.type.split("_")[2])
+
+            elif "barter_" in return_staf.type:
+                a = True_Save.load_chans(return_staf.type.split("_")[2])
+                a = random.choices(a[0], weights=a[1], k=1)[0]
+                a = Cards.load_card_from_data_base(int(a))
+                b = True_Save.load_chans(return_staf.type.split("_")[1])
+                b = random.choices(b[0], weights=b[1], k=1)[0]
+                b = Cards.load_card_from_data_base(int(b))
+                return_staf.slot = (a, b)
+                return_staf.text = return_staf.text.replace("!@#$", a.name.split("\n")[0])
+
+
+            return return_staf
+
 
 class line:
     def __init__(self, color1, color2, coordinate):
@@ -1313,6 +1737,7 @@ class line:
                                                 self.coor[1],
                                                 (self.coor[2] - self.coor[0]) * min/max,
                                                 self.coor[3] - self.coor[1]])
+
 
 class Trangul:
     def round(x, y, r, d):
@@ -1370,8 +1795,6 @@ def move(world, ikey, for_who):
         sounds["move"].play()
         job = True
 
-
-
     elif ikey == pygame.K_TAB:
         job = True
 
@@ -1379,9 +1802,7 @@ def move(world, ikey, for_who):
         comand(input("команду пж: "))
 
     if job:
-
         pass
-
         zith.triger()
         zith.canculate_tick()
 
@@ -1437,13 +1858,16 @@ def renre_reset():
             sc_main.blit(pygame.transform.scale(playr_now.artefact[i].foto, (50, 50)),
                          Trangul.round(225 - 25, 725 - 25, math.pi / len2_ * i + rad * 300, 103))
 
+def render_achivment():
+    for i in range(len(meta_progress["all_ach"])):
+        if str(i) in meta_progress["achivment"]:
+            sc_main.blit(pygame.transform.scale(meta_progress["all_ach"][i].foto, (57, 57)), (915 + i%5 * 57, 87 + math.floor(i/5)*57))
+        else:
+            sc_main.blit(pygame.transform.scale(tesxture_blok["dont_unlock"], (57, 57)), (915 + i%5 * 57, 87 + math.floor(i/5)*57))
 def start_locashon():
     zith.we_now = Place.load_place_from_data_base(1)
     zith.local_World = [[False for _ in range(zith.RAZMER)] for _ in range(zith.RAZMER)]
-    zith.local_World[7][7] = Objet.load_obj_from_data_base(40)
-    zith.local_World[6][7] = Objet.load_obj_from_data_base(41)
-    zith.local_World[5][7] = Objet.load_obj_from_data_base(42)
-
+    Structor.load_in_game(Structor.load_form_data(1))
     playr_now.cards.append(Cards.load_card_from_data_base(3))
     playr_now.artefact.append(Cards.load_card_from_data_base(4))
 
@@ -1453,10 +1877,16 @@ def comand(com):
         playr_now.y = int(_comand[1])
     elif _comand[0] == "x":
         playr_now.x = int(_comand[1])
+    elif _comand[0] == "hp":
+        playr_now.hp = int(_comand[1])
     elif _comand[0] == "smena":
         zith.smena(playr_now.y)
     elif _comand[0] == "loacsion":
         zith.we_now = Place.load_place_from_data_base(int(_comand[1]))
+    elif _comand[0] == 'card':
+        playr_now.cards.append(Cards.load_card_from_data_base(int(_comand[1])))
+    elif _comand[0] == 'artefact':
+        playr_now.artefact.append(Cards.load_card_from_data_base(int(_comand[1])))
 
 
 zith = World(random.randint(0, 100000000), Place("", [], "", "", "free", "", ""))
@@ -1472,19 +1902,19 @@ start_locashon()
 
 
 igra_gui = IMenu([
-    [36, 570, 145, 679], #начать моргание глазом
-    [161, 570, 270, 679], #прекратить моргание глазом
-    [252, 808, 295, 850], #стрелка на право в картах
-    [5, 808, 48, 850], #стрелка на лево в картах
-    [970, 720, 1189, 778], #ACT
-    [115, 785, 186, 885], #карта
-    [612, 646, 895, 900], #текст описания
-    [400, 200, 800, 600], #доска
+    [100, 8, 181, 86], #начать моргание глазом
+    [188, 8, 269, 86], #прекратить моргание глазом
+    [],
+    [],
+    [728, 803, 1009, 897], #ACT
+    [955, 600, 1100, 978], #карта
+    [965, 116, 1189, 557], #текст описания
+    [266, 109, 933, 786], #доска
     [19, 56, 170, 250], #диолог
-    [7, 293, 134, 512], #нопка диалага 1
-    [134, 293, 269, 512], #кнопка дилога 2
-    [269, 293, 383, 512], #кнопка дилога 3
-    [960, 229, 1199, 708], #артевакты
+    [14, 336, 241, 501], #нопка диалага 1
+    [14, 504, 241, 662], #кнопка дилога 2
+    [14, 667, 241, 771], #кнопка дилога 3
+    [313, 857, 712, 896], #артевакты
     [1146, 1, 1198, 53], #сохронение
     [1083, 4, 1137, 56] #настройки
                  ])
@@ -1494,7 +1924,8 @@ kill_gui = IMenu([
       [737, 773, 93], #играть
       [0, 0, 100, 900], #текстур пак
       [784, 372, 50], #прошлая игра
-      [984, 768, 93] #настройки
+      [984, 768, 93], #настройки
+      [915, 87, 1200, 87+57*2] #ачивки
       ])
 
 reset_gui = IMenu([
@@ -1554,7 +1985,6 @@ original_menu = 2
 save_itom = {}
 
 while RUN:
-
     sc_main.blit(nots.render("версия 0.8", True, (255, 255, 255)), (500 * scale.scale_right, 0))
 
     scaled_canvas = pygame.transform.scale(sc_main, (sc_real.get_width(), sc_real.get_height()))
@@ -1562,10 +1992,10 @@ while RUN:
     sc_real.blit(scaled_canvas, (0, 0))
 
     pygame.display.update()
-
+    if doble_click_chek: doble_click_chek -= 1
 
     if Scena.scena:
-        original_menu = menu
+        original_menu = 1
         menu = 4
 
 
@@ -1579,11 +2009,21 @@ while RUN:
 
     if menu == 1:
 
+        if playr_now.hp >= 100:
+            Achievement.meta_achiv(None, 4)
+
         if playr_now.hp <= 0:
             menu = 3
             sistem_seting.start_music(sounds["recant"])
+            Achievement.meta_achiv(None, 1)
+            if playr_now.y <= -1400:
+                Achievement.meta_achiv(None, 3)
+            elif playr_now.y <= -3000:
+                Achievement.meta_achiv(None, 7)
             if zith.RAZMER - 8 >= len(meta_progress["open soul"]):
                 Soul_class.unlock_soul()
+                if 3 in meta_progress["open soul"]:
+                    Achievement.meta_achiv(None, 5)
                 Scena.scena = Gif("новая_жиза", True, 1)
 
 
@@ -1607,13 +2047,10 @@ while RUN:
                 setting["mous_on"] = False
                 if setting["figur on mous"]:
                     setting["figur on mous"] = False
-                    other_mov([math.floor((scale.mous_get()[0] - 400) / (50 * (8/zith.RAZMER))),
-                               math.floor((scale.mous_get()[1] - 200) / (50 * (8/zith.RAZMER)))])
+                    other_mov(igra_gui.sub_select(8, scale.mous_get(), [zith.RAZMER]*2))
 
 
             if i.type == pygame.MOUSEBUTTONDOWN:
-
-
 
                 if i.button == 1:
 
@@ -1655,26 +2092,21 @@ while RUN:
                     elif BUTTON == 2:
                         print("нельзя")
 
-                    elif BUTTON == 3: #стрелка на право в картах
-                        if setting["cards_now"] + 1 < len(playr_now.cards):
-                            setting["cards_now"] += 1
-
-                    elif BUTTON == 4: #стрелка на лево в картах
-                        if setting["cards_now"] - 1 >= 0:
-                            setting["cards_now"] -= 1
-
                     elif BUTTON == 6: #выбираем карту
                         setting["choss_what"] = "cards"
+                        if doble_click_chek:
+                            if setting["choss_what"] == "cards":
+                                sounds["ACT"].play()
+                                playr_now.cards[setting["cards_now"]].efect_card(zith)
+                                zith.canculate_tick()
 
                     elif BUTTON == 8: #игровое поле
-                        setting["choss_what"] = [math.floor((scale.mous_get()[0] - 400) / (50 * (8 / zith.RAZMER))),
-                                                 math.floor((scale.mous_get()[1] - 200) / (50 * (8/zith.RAZMER)))]
+                        setting["choss_what"] = igra_gui.sub_select(BUTTON, scale.mous_get(), [zith.RAZMER]*2)
                         if setting["choss_what"] == [playr_now.x % zith.RAZMER, playr_now.y % zith.RAZMER]:
                             setting["figur on mous"] = True
 
                     elif BUTTON == 13:
-                        setting["item"] = [math.floor((scale.mous_get()[0] - 960) / 40), math.floor((scale.mous_get()[1] - 229) / 40)]
-                        setting["item"] = setting["item"][0] + setting["item"][1] * 6
+                        setting["item"] = igra_gui.sub_select(BUTTON, scale.mous_get(), [10, 1])[0]
                         if setting["item"] > len(playr_now.artefact)-1:
                             setting["item"] = False
 
@@ -1685,19 +2117,28 @@ while RUN:
                         original_menu = menu
                         menu = 5
 
+                    doble_click_chek = 5
+
                 if i.button == 5: # Колесико вверх
                     if BUTTON == 7:
-
                         setting["scrool_opisanie"] += 1
 
-                    if BUTTON == 9:
-
+                    elif BUTTON == 9:
                         setting["dialog"] += 1
 
-                    if 10 <= BUTTON <= 13:
+                    elif BUTTON == 6:
+                        if setting["cards_now"] > 0:
+                            setting["cards_now"] -= 1
+
+                    elif 10 <= BUTTON <= 13:
                         setting["scrool_chat"] += 1
 
+
                 if i.button == 4: # Колесико вниз
+                    if BUTTON == 6:
+                        if setting["cards_now"] + 1 < len(playr_now.cards):
+                            setting["cards_now"] += 1
+
                     if BUTTON == 7:
                         if setting["scrool_opisanie"]:
                             setting["scrool_opisanie"] -= 1
@@ -1746,6 +2187,8 @@ while RUN:
 
         BUTTON = kill_gui.button_mous(scale.mous_get())
 
+        render_achivment()
+
         True_Save.render_pak()
 
         for i in pygame.event.get():
@@ -1791,10 +2234,19 @@ while RUN:
                     elif BUTTON == 5:
                         menu = 5
                         original_menu = 2
-
             if i.type == pygame.QUIT:
                 pass
                 RUN = False
+
+        if BUTTON == 6:
+            a = kill_gui.sub_select(6, scale.mous_get(), [5, 2])
+            a = a[0] + a[1]*5
+            if len(meta_progress["all_ach"]) > a:
+                sc_main.blit(nots.render(meta_progress["all_ach"][a].name, False, (255, 255, 255)), (scale.mous_get()[0]-300, scale.mous_get()[1]))
+                sc_main.blit(nots.render(meta_progress["all_ach"][a].opisanie, False, (255, 255, 255)),
+                             (scale.mous_get()[0] - 300, scale.mous_get()[1]+50))
+
+
                  #меню входа
 
     elif menu == 3:
@@ -1882,7 +2334,8 @@ while RUN:
                         True_Save.update_stuff("languge", lang[BUTTON])
 
                     if BUTTON == 4:
-                        option_settings["music_voluom"] = math.floor((scale.mous_get()[0] - 75) / (537/100))
+                        option_settings["music_voluom"] = seting_gui.sub_select(4, scale.mous_get(), [100, 1])[0]
+                        True_Save.update_stuff("music_voluom", option_settings["music_voluom"])
                         sistem_seting.start_music(sistem_seting.sound)
 
             if i.type == pygame.QUIT:
@@ -1892,6 +2345,8 @@ while RUN:
         sc_main.blit(tesxture_blok["soul_sect"], (0, 0))
 
         sc_main.blit(pygame.transform.scale(meta_progress["open soul"][setting["soul vibor"]].png, (218, 218)), (90, 128))
+        sc_main.blit(pygame.transform.scale(meta_progress["open soul"][setting["soul vibor"]].gid, (300, 300)),
+                     (545, 77))
 
         for i in pygame.event.get():
             if i.type == pygame.KEYDOWN:
@@ -1916,7 +2371,6 @@ while RUN:
             if i.type == pygame.QUIT:
                 RUN = False
 
-
-
-
     clock.tick(FPS)
+
+pygame.quit()
